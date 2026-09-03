@@ -1,6 +1,17 @@
 # 📄 Docent
 
-**Docent** is a multi-workspace document intelligence and RAG platform. Instead of a single generic chatbot trying to answer everything the same way, Docent gives you **specialized AI workspaces** tailored for specific types of documents and tasks—like auditing commercial contracts, studying textbooks with spaced repetition, or running general research with exact page citations.
+<p align="center">
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" />
+  <img src="https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black" alt="React 19" />
+  <img src="https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/TailwindCSS-v4-38bdf8?logo=tailwindcss&logoColor=white" alt="Tailwind CSS v4" />
+  <img src="https://img.shields.io/badge/Pinecone-Serverless-000000?logo=pinecone&logoColor=white" alt="Pinecone" />
+  <img src="https://img.shields.io/badge/Groq-LPU_Inference-f55036" alt="Groq" />
+</p>
+
+**Docent** is a multi-workspace document intelligence and RAG platform. Instead of a single generic chatbot trying to answer everything the same way, Docent gives you **specialized AI workspaces** tailored for specific document types—such as auditing commercial contracts, studying textbooks with spaced repetition, or running deep research with grounded page citations.
+
+> **Workspace Status Note**: 3 core workspaces (**General Chat**, **Contract Auditor**, and **Spaced Learning**) are fully live and production-ready. 2 advanced analytical workspaces (**Spreadsheet Analytics** and **CV / Interview Simulator**) are currently in active preview / WIP.
 
 ---
 
@@ -86,32 +97,64 @@ This fuses dense Pinecone vector embeddings with in-memory BM25 lexical inverted
 
 ---
 
+## ⚙️ Environment Configuration
+
+Copy `.env.example` to `.env` in the root or `backend/` directory:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `GROQ_API_KEY` | **Yes** | — | Groq Cloud API Key ([console.groq.com](https://console.groq.com/keys)) |
+| `PINECONE_API_KEY` | **Yes** | — | Pinecone API Key ([app.pinecone.io](https://app.pinecone.io/)) |
+| `PINECONE_INDEX_NAME` | No | `pdf-chatbot` | Target Pinecone serverless index name |
+| `LLM_MODEL` | No | `openai/gpt-oss-120b` | Model name hosted on Groq LPU |
+| `EMBEDDING_MODEL` | No | `sentence-transformers/all-MiniLM-L6-v2` | Embedding model for semantic vector search |
+| `CORS_ALLOWED_ORIGINS` | No | `http://localhost:5173,http://127.0.0.1:8000` | Allowed CORS origins for frontend requests |
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
 - Python 3.11+
 - Node.js 18+ & npm
-- Groq API Key ([console.groq.com](https://console.groq.com/keys))
-- Pinecone API Key ([app.pinecone.io](https://app.pinecone.io/))
+- Groq API Key & Pinecone API Key
 
 ### 1. Clone & Setup Backend
+
+**macOS / Linux:**
 ```bash
 git clone https://github.com/abhiteksingh/Docent.git
 cd Docent
 
-# Create virtual environment
-python -m venv backend/venv
-# Windows:
-backend\venv\Scripts\activate
-# Linux/macOS:
-# source backend/venv/bin/activate
+# Create and activate virtual environment
+python3 -m venv backend/venv
+source backend/venv/bin/activate
 
-# Install requirements
+# Install dependencies
 pip install -r requirements.txt
 
-# Setup environment variables
+# Configure environment
 cp .env.example .env
-# Open .env and add your GROQ_API_KEY and PINECONE_API_KEY
+```
+
+**Windows (PowerShell):**
+```powershell
+git clone https://github.com/abhiteksingh/Docent.git
+cd Docent
+
+# Create and activate virtual environment
+python -m venv backend\venv
+backend\venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment
+copy .env.example .env
 ```
 
 ### 2. Setup Frontend
@@ -124,13 +167,16 @@ npm install
 
 **Start Backend Server:**
 ```bash
-# In workspace root:
+# macOS / Linux:
+python -m uvicorn backend.app.main:app --reload --port 8000
+
+# Windows:
 backend\venv\Scripts\python -m uvicorn backend.app.main:app --reload --port 8000
 ```
 
 **Start Frontend Client:**
 ```bash
-# In frontend directory:
+# From frontend directory:
 npm run dev
 ```
 Open [http://localhost:5173](http://localhost:5173) in your browser.
@@ -139,9 +185,13 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ## 🧪 Running Tests
 
-To run the full backend integration test suite covering all 15 workflow validation stages:
+Docent includes a complete integration test suite validating all 15 workflow stages (in-memory SQLite, hybrid retrieval, contract audit rules, SM-2 decay, and session cleanup):
 
 ```bash
+# macOS / Linux:
+python backend/test_app.py
+
+# Windows:
 backend\venv\Scripts\python backend/test_app.py
 ```
 
