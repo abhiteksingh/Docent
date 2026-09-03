@@ -785,17 +785,18 @@ function SpacedLearningWorkspace({ chatId, setChatId, messages, setMessages, cha
                                   return <p className="text-zinc-800 font-normal">Verify concepts against chapter text citations in your notes.</p>;
                                 }
                                 let lines = expectedAns.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-                                if (lines.length === 1 && (/(?:\d+[\.\)]\s+|;\s+(?=[A-Z0-9]))/.test(lines[0]))) {
-                                  lines = lines[0]
-                                    .split(/(?=\b\d+[\.\)]\s+)|;\s+(?=[A-Z0-9\(\[])/g)
-                                    .map(l => l.replace(/^;\s*/, '').trim())
-                                    .filter(Boolean);
+                                if (lines.length === 1) {
+                                  // Safely split numbered lists preceded by punctuation and followed by capital letters
+                                  const listMatches = lines[0].split(/(?<=[.:;])\s+(?=[1-9][0-9]?[\.\)]\s+[A-Z])/g);
+                                  if (listMatches.length > 1) {
+                                    lines = listMatches.map(l => l.trim()).filter(Boolean);
+                                  }
                                 }
                                 if (lines.length > 1) {
                                   return (
                                     <div className="space-y-1.5 mt-1">
                                       {lines.map((line, lIdx) => {
-                                        const numMatch = line.match(/^(\d+[\.\)]|\-|\•)\s*(.*)$/);
+                                        const numMatch = line.match(/^([1-9][0-9]?[\.\)]|\-|\•)\s+(.*)$/);
                                         if (numMatch) {
                                           const prefix = numMatch[1];
                                           const rest = numMatch[2];
@@ -816,10 +817,9 @@ function SpacedLearningWorkspace({ chatId, setChatId, messages, setMessages, cha
                                           );
                                         }
                                         return (
-                                          <div key={lIdx} className="flex items-start gap-1.5 text-zinc-800 text-[11px] leading-relaxed">
-                                            <span className="text-[#4C8DFF] font-bold shrink-0">•</span>
-                                            <span className="flex-1">{line}</span>
-                                          </div>
+                                          <p key={lIdx} className="text-zinc-800 text-[11px] leading-relaxed">
+                                            {line}
+                                          </p>
                                         );
                                       })}
                                     </div>
