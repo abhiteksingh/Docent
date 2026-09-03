@@ -771,16 +771,62 @@ function SpacedLearningWorkspace({ chatId, setChatId, messages, setMessages, cha
                             className="w-full bg-zinc-50 border border-[#EBEAE5] p-2.5 rounded-lg text-xs leading-relaxed resize-none h-14 outline-none font-serif text-zinc-850 focus:border-zinc-400 focus:bg-white transition"
                           />
                         ) : (
-                          <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-[11px] leading-relaxed text-zinc-700 space-y-2">
+                          <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-[11px] leading-relaxed text-zinc-700 space-y-2.5">
                             <div>
                               <p className="font-bold text-[9px] text-zinc-400 uppercase tracking-wider">Your Answer:</p>
-                              <p className="italic text-zinc-600">"{retrievalAnswers[idx] || "(No answer typed)"}"</p>
+                              <p className="italic text-zinc-600 bg-white/60 p-1.5 rounded border border-zinc-200/50 mt-1">
+                                "{retrievalAnswers[idx] || "(No answer typed)"}"
+                              </p>
                             </div>
                             <div className="pt-2 border-t border-zinc-200/70">
-                              <p className="font-bold text-[9px] text-[#4C8DFF] uppercase tracking-wider mb-0.5">Model Answer & Key Concepts:</p>
-                              <p className="text-zinc-800 font-normal">
-                                {expectedAns || "Verify concepts against chapter text citations in your notes."}
-                              </p>
+                              <p className="font-bold text-[9px] text-[#4C8DFF] uppercase tracking-wider mb-1">Model Answer & Key Concepts:</p>
+                              {(() => {
+                                if (!expectedAns) {
+                                  return <p className="text-zinc-800 font-normal">Verify concepts against chapter text citations in your notes.</p>;
+                                }
+                                let lines = expectedAns.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+                                if (lines.length === 1 && (/(?:\d+[\.\)]\s+|;\s+(?=[A-Z0-9]))/.test(lines[0]))) {
+                                  lines = lines[0]
+                                    .split(/(?=\b\d+[\.\)]\s+)|;\s+(?=[A-Z0-9\(\[])/g)
+                                    .map(l => l.replace(/^;\s*/, '').trim())
+                                    .filter(Boolean);
+                                }
+                                if (lines.length > 1) {
+                                  return (
+                                    <div className="space-y-1.5 mt-1">
+                                      {lines.map((line, lIdx) => {
+                                        const numMatch = line.match(/^(\d+[\.\)]|\-|\•)\s*(.*)$/);
+                                        if (numMatch) {
+                                          const prefix = numMatch[1];
+                                          const rest = numMatch[2];
+                                          const colonMatch = rest.match(/^([^:–—]+[:–—])\s*(.*)$/);
+                                          return (
+                                            <div key={lIdx} className="flex items-start gap-1.5 text-zinc-800 text-[11px] leading-relaxed">
+                                              <span className="font-mono text-[10px] font-bold text-[#4C8DFF] shrink-0 mt-0.5">{prefix}</span>
+                                              <div className="flex-1">
+                                                {colonMatch ? (
+                                                  <span>
+                                                    <strong className="font-semibold text-zinc-900">{colonMatch[1]}</strong> {colonMatch[2]}
+                                                  </span>
+                                                ) : (
+                                                  <span>{rest}</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+                                        return (
+                                          <div key={lIdx} className="flex items-start gap-1.5 text-zinc-800 text-[11px] leading-relaxed">
+                                            <span className="text-[#4C8DFF] font-bold shrink-0">•</span>
+                                            <span className="flex-1">{line}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  );
+                                }
+                                return <p className="text-zinc-800 font-normal leading-relaxed mt-0.5">{expectedAns}</p>;
+                              })()}
                             </div>
                           </div>
                         )}
