@@ -63,12 +63,14 @@ flowchart TD
 Word (`.docx`), PowerPoint (`.pptx`), and Excel (`.xlsx`) files are parsed using native Python `zipfile` and `xml.etree.ElementTree`. This keeps the backend fast and lightweight on any platform without requiring heavy binary dependencies. PDFs are parsed via PyMuPDF with RapidOCR fallback for scanned pages.
 
 ### 2. Hybrid Retrieval with Reciprocal Rank Fusion (RRF)
-To combine semantic meaning with exact keyword and clause lookups, Docent uses Reciprocal Rank Fusion with constant $k = 60$:
-$$\text{Score}(d) = \sum_{m \in M} \frac{1}{k + r_m(d)}$$
+To combine semantic meaning with exact keyword and clause lookups, Docent uses Reciprocal Rank Fusion with constant `k = 60`:
+```text
+RRF_Score(d) = Σ [ 1.0 / (60 + rank_m(d)) ]
+```
 This fuses dense Pinecone vector embeddings with in-memory BM25 lexical inverted indices, ensuring exact clause references and broad concepts are both captured.
 
 ### 3. Real Calculation Engines
-- **SuperMemo SM-2 & Forgetting Decay**: Calculates card retrievability $R = e^{-\Delta t / \text{half\_life}}$ and updates intervals based on user review performance.
+- **SuperMemo SM-2 & Forgetting Decay**: Calculates card retrievability `R = exp(-Δt / half_life)` and updates intervals based on user review performance.
 - **Contract Safeguard Scanner**: Scans text against 10 critical commercial protection categories (*Indemnification*, *Limitation of Liability*, *Termination*, *Force Majeure*, etc.).
 - **Monte Carlo Simulator**: Runs 150 Gaussian-perturbed iterations across variables to plot probability distributions.
 
