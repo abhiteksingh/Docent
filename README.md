@@ -1,7 +1,6 @@
 # 📄 Docent
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" />
   <img src="https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black" alt="React 19" />
   <img src="https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white" alt="FastAPI" />
   <img src="https://img.shields.io/badge/TailwindCSS-v4-38bdf8?logo=tailwindcss&logoColor=white" alt="Tailwind CSS v4" />
@@ -198,4 +197,4 @@ backend\venv\Scripts\python backend/test_app.py
 ---
 
 ## 📜 License
-Distributed under the MIT License. See `LICENSE` for details.
+All rights reserved. This code is provided for viewing purposes only. No permission is granted to use, copy, modify, or distribute this software.
