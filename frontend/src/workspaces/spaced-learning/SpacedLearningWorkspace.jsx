@@ -748,26 +748,45 @@ function SpacedLearningWorkspace({ chatId, setChatId, messages, setMessages, cha
                 {retrievalQuestions.length === 0 ? (
                   <p className="text-zinc-500 italic text-center py-6">Generating closed-book quiz items...</p>
                 ) : (
-                  retrievalQuestions.map((q, idx) => (
-                    <div key={idx} className="space-y-2 text-left">
-                      <p className="font-bold text-zinc-800 leading-normal">{q}</p>
-                      {!showRetrievalAnswers ? (
-                        <textarea
-                          value={retrievalAnswers[idx] || ""}
-                          onChange={(e) => setRetrievalAnswers(prev => ({ ...prev, [idx]: e.target.value }))}
-                          placeholder="Type your recall answer here..."
-                          className="w-full bg-zinc-50 border border-[#EBEAE5] p-2.5 rounded-lg text-xs leading-relaxed resize-none h-14 outline-none font-serif text-zinc-850"
-                        />
-                      ) : (
-                        <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-[11px] leading-relaxed text-zinc-700">
-                          <p className="font-bold text-[9px] text-zinc-400 uppercase">Your Answer:</p>
-                          <p className="italic">"{retrievalAnswers[idx] || "(No answer typed)"}"</p>
-                          <p className="font-bold text-[9px] text-[#4C8DFF] uppercase mt-2">Self-Verification Check:</p>
-                          <p>Verify concepts against chapter text citations [p.X] in textbook references.</p>
+                  retrievalQuestions.map((qItem, idx) => {
+                    const qText = typeof qItem === "object" ? (qItem.question || "") : qItem;
+                    const expectedAns = typeof qItem === "object" ? (qItem.expected_answer || "") : "";
+                    const pageCit = typeof qItem === "object" ? (qItem.page_citation || "") : "";
+
+                    return (
+                      <div key={idx} className="space-y-2 text-left">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-bold text-zinc-800 leading-normal flex-1">{qText}</p>
+                          {pageCit && (
+                            <span className="font-mono text-[9px] bg-[#4C8DFF]/10 text-[#4C8DFF] px-1.5 py-0.5 rounded border border-[#4C8DFF]/20 shrink-0">
+                              {pageCit}
+                            </span>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ))
+                        {!showRetrievalAnswers ? (
+                          <textarea
+                            value={retrievalAnswers[idx] || ""}
+                            onChange={(e) => setRetrievalAnswers(prev => ({ ...prev, [idx]: e.target.value }))}
+                            placeholder="Type your recall answer here..."
+                            className="w-full bg-zinc-50 border border-[#EBEAE5] p-2.5 rounded-lg text-xs leading-relaxed resize-none h-14 outline-none font-serif text-zinc-850 focus:border-zinc-400 focus:bg-white transition"
+                          />
+                        ) : (
+                          <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-[11px] leading-relaxed text-zinc-700 space-y-2">
+                            <div>
+                              <p className="font-bold text-[9px] text-zinc-400 uppercase tracking-wider">Your Answer:</p>
+                              <p className="italic text-zinc-600">"{retrievalAnswers[idx] || "(No answer typed)"}"</p>
+                            </div>
+                            <div className="pt-2 border-t border-zinc-200/70">
+                              <p className="font-bold text-[9px] text-[#4C8DFF] uppercase tracking-wider mb-0.5">Model Answer & Key Concepts:</p>
+                              <p className="text-zinc-800 font-normal">
+                                {expectedAns || "Verify concepts against chapter text citations in your notes."}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
 
@@ -776,41 +795,17 @@ function SpacedLearningWorkspace({ chatId, setChatId, messages, setMessages, cha
                   {!showRetrievalAnswers ? (
                     <button
                       onClick={() => setShowRetrievalAnswers(true)}
-                      className="bg-zinc-950 hover:bg-black text-white px-5 py-2 rounded-full font-bold text-xs cursor-pointer w-full text-center"
+                      className="bg-zinc-950 hover:bg-black text-white px-5 py-2.5 rounded-full font-bold text-xs cursor-pointer w-full text-center transition shadow-sm active:scale-[0.99]"
                     >
                       Reveal Expected Answers
                     </button>
                   ) : (
-                    <div className="flex gap-2 w-full">
-                      <button
-                        onClick={() => {
-                          setRetrievalModalOpen(false);
-                          const targetCard = selectedCardTopic
-                            ? flashcards.find(f => f.topic?.toLowerCase() === selectedCardTopic.toLowerCase())
-                            : (getInterleavedCards()[0] || flashcards[0]);
-                          if (targetCard?.id) {
-                            gradeFlashcard(targetCard.id, "Good");
-                          }
-                        }}
-                        className="bg-green-600 hover:bg-green-700 text-white py-2 rounded-full font-bold text-xs cursor-pointer flex-1 text-center font-sans"
-                      >
-                        Grade "Good"
-                      </button>
-                      <button
-                        onClick={() => {
-                          setRetrievalModalOpen(false);
-                          const targetCard = selectedCardTopic
-                            ? flashcards.find(f => f.topic?.toLowerCase() === selectedCardTopic.toLowerCase())
-                            : (getInterleavedCards()[0] || flashcards[0]);
-                          if (targetCard?.id) {
-                            gradeFlashcard(targetCard.id, "Again");
-                          }
-                        }}
-                        className="bg-amber-600 hover:bg-amber-700 text-white py-2 rounded-full font-bold text-xs cursor-pointer flex-1 text-center font-sans"
-                      >
-                        Grade "Again"
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => setRetrievalModalOpen(false)}
+                      className="bg-zinc-900 hover:bg-black text-white py-2.5 px-6 rounded-full font-bold text-xs cursor-pointer w-full text-center transition shadow-sm active:scale-[0.99]"
+                    >
+                      End Quiz
+                    </button>
                   )}
                 </div>
               )}

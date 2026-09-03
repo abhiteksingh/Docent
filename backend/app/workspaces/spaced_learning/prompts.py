@@ -69,13 +69,23 @@ RETRIEVAL_QUIZ_PROMPT = """You are an academic active recall specialist and quiz
 Based on this course text snippet:
 {snippet}
 
-Generate exactly 3 high-yield closed-book retrieval questions to rigorously test the student's conceptual memory, formulas, and core mechanics.
+Generate exactly 3 high-yield closed-book retrieval questions to rigorously test the student's conceptual memory, key formulas, mechanics, and definitions.
+For each question, provide the exact question text and a concise, clear model answer / verification criteria based directly on the provided text.
 
 Strict Requirements:
 1. Focus on high-impact concepts, key equations, or causal definitions.
-2. Do NOT use markdown tables (no | pipe characters).
+2. Provide a clear, precise "expected_answer" explaining the correct answer so the student can verify their recall.
 3. Output MUST be strictly valid JSON matching this exact structure:
-{{"questions": ["Question 1", "Question 2", "Question 3"]}}
+{{
+  "questions": [
+    {{
+      "question": "Question text here...",
+      "expected_answer": "Detailed model answer and key conceptual criteria here...",
+      "page_citation": "p.1"
+    }}
+  ]
+}}
 
 Do NOT include any markdown code fences, introductory text, or explanatory comments. Return ONLY the JSON object."""
+
 

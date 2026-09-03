@@ -221,15 +221,32 @@ class SpacedLearningWorkspace(BaseWorkspace):
                 questions = res_json.get("questions", [])
                 if not questions:
                     questions = [
-                        "What is the primary physical or theoretical concept introduced in this material?",
-                        "State the core formula or governing principle and its critical variables.",
-                        "What is the most important real-world application or edge case of this topic?"
+                        {
+                            "question": "What is the primary physical or theoretical concept introduced in this material?",
+                            "expected_answer": "Identifies the core governing principle, defining equations, and system boundaries introduced in the chapter text.",
+                            "page_citation": "p.1"
+                        },
+                        {
+                            "question": "State the key formula or governing equation and define its critical variables.",
+                            "expected_answer": "Lists the primary algebraic or differential formula along with standard units and constraints on each variable.",
+                            "page_citation": "p.2"
+                        },
+                        {
+                            "question": "What is the most important real-world application or edge case discussed in the material?",
+                            "expected_answer": "Details the primary practical use case, failure mode, or theoretical assumption under which the principle holds.",
+                            "page_citation": "p.3"
+                        }
                     ]
+
+                formatted_items = []
+                for idx, item in enumerate(questions):
+                    q_text = item.get("question", item) if isinstance(item, dict) else str(item)
+                    formatted_items.append(f"{idx+1}. {q_text}")
 
                 formatted_answer = (
                     "**Active Recall Quiz (Closed-Book)**\n\n" +
-                    "\n".join([f"{idx+1}. {q}" for idx, q in enumerate(questions)]) +
-                    "\n\n*Attempt answering each question from memory before verifying against your notes.*"
+                    "\n".join(formatted_items) +
+                    "\n\n*Attempt answering each question from memory before verifying against expected answers.*"
                 )
                 
                 return {
@@ -243,12 +260,24 @@ class SpacedLearningWorkspace(BaseWorkspace):
             except Exception as e:
                 logger.error(f"Error compiling retrieval quiz: {e}")
                 fallback_q = [
-                    "What is the primary topic of the document?",
-                    "Explain a key formula in the document.",
-                    "What is the main takeaway?"
+                    {
+                        "question": "What is the primary topic of the document?",
+                        "expected_answer": "Reflects the central subject matter, problem domain, and theoretical scope outlined across the document text.",
+                        "page_citation": "p.1"
+                    },
+                    {
+                        "question": "Explain a key formula or core mechanic in the document.",
+                        "expected_answer": "Highlights the foundational mathematical expression, transformation logic, or algorithmic mechanism.",
+                        "page_citation": "p.2"
+                    },
+                    {
+                        "question": "What is the main takeaway or concluding insight?",
+                        "expected_answer": "Summarizes the key findings, design trade-offs, and critical implications.",
+                        "page_citation": "p.3"
+                    }
                 ]
                 return {
-                    "answer": "Active Recall Quiz:\n1. " + "\n2. ".join(fallback_q),
+                    "answer": "Active Recall Quiz:\n1. " + "\n2. ".join([q["question"] for q in fallback_q]),
                     "sources": [],
                     "token_count": 0,
                     "citations": [],
