@@ -19,3 +19,8 @@ Maintain the following guidelines when modifying the Docent frontend or backend:
 * **Spaced Learning**: Use **Hierarchical Chunks** (500–800t) and balanced temperature (`0.5`).
 * **Spreadsheet Analytics**: Use **Row-by-Row Serialization** (not character splitting). Keep temperature at `0.1`.
 * **CV Simulator**: Use **Entity-Based Keyword Matching** and structured templates. Keep temperature at `0.3`.
+
+## 5. Planning & Implementation Workflow
+* Whenever proposing, discussing a plan, or working on new features/modifications, ALWAYS create or update an `implementation_plan.md` artifact first.
+* Keep the plan structured with proposed changes, affected files, and verification steps before executing code modifications.
+

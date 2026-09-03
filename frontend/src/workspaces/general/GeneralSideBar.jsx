@@ -1,6 +1,20 @@
 import { useEffect } from 'react';
 import API_BASE from '../../api';
 
+const capitalizeTitle = (str = "") => {
+  if (!str) return "Document";
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
+const getFileInfo = (title = "") => {
+  const ext = title.split('.').pop()?.toLowerCase();
+  if (ext === "docx" || ext === "doc") return { icon: "📝", type: "Word Document" };
+  if (ext === "pptx" || ext === "ppt") return { icon: "📊", type: "PowerPoint Slides" };
+  if (ext === "xlsx" || ext === "xls" || ext === "csv") return { icon: "📈", type: "Spreadsheet Data" };
+  if (ext === "txt" || ext === "md") return { icon: "📃", type: "Text Document" };
+  return { icon: "📄", type: "PDF Document" };
+};
+
 function GeneralSideBar({ chats, chatId, setChats, setChatId, setMessages, onNavigateHome, onDrop }) {
 
   useEffect(() => {
@@ -69,16 +83,17 @@ function GeneralSideBar({ chats, chatId, setChats, setChatId, setMessages, onNav
 
   return (
     <div className="h-screen w-[280px] bg-[#161616] border-r border-[#2A2A2A] p-6 flex flex-col justify-between shrink-0 z-20">
-      <div className="mb-6 flex items-center justify-between border-b border-[#2A2A2A] pb-4 select-none">
-        <div className="flex items-center gap-1.5 cursor-pointer" onClick={onNavigateHome}>
-          <span className="font-display text-xl font-medium tracking-tight text-white">Docent</span>
-          <span className="w-1.5 h-1.5 bg-[#4C8DFF] rounded-full mt-1.5"></span>
+      <div className="mb-6 flex items-center justify-between border-b border-[#2A2A2A] pb-4 select-none gap-2">
+        <div className="min-w-0 flex-1 select-none">
+          <span className="font-extrabold text-sm tracking-tight text-white font-body select-none truncate block">
+            General Chat
+          </span>
         </div>
         <button 
           onClick={handleNewChat} 
-          className="text-[10px] bg-[#4C8DFF] hover:bg-[#6FA2FF] text-white px-3 py-1.5 rounded-full font-semibold tracking-wide cursor-pointer"
+          className="text-[10px] bg-[#222] hover:bg-[#333] border border-[#333] text-white px-2.5 py-1 rounded-lg font-body font-medium transition cursor-pointer shrink-0 select-none"
         >
-          New Chat
+          + New Chat
         </button>
       </div>
 
@@ -88,10 +103,10 @@ function GeneralSideBar({ chats, chatId, setChats, setChatId, setMessages, onNav
           {activeChat ? (
             <div className="bg-[#0A0A0A] border border-[#2A2A2A] rounded-[20px] p-4 flex flex-col gap-3 shadow-inner">
               <div className="flex items-start gap-3">
-                <span className="text-lg mt-0.5 select-none font-sans">📄</span>
+                <span className="text-lg mt-0.5 select-none font-sans">{getFileInfo(activeChat.title).icon}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-mono text-xs text-white font-medium truncate">{activeChat.title}</p>
-                  <p className="text-[10px] text-[#9A9A9A] mt-0.5 font-mono">PDF Document</p>
+                  <p className="font-mono text-xs text-white font-medium truncate" title={capitalizeTitle(activeChat.title)}>{capitalizeTitle(activeChat.title)}</p>
+                  <p className="text-[10px] text-[#9A9A9A] mt-0.5 font-mono">{getFileInfo(activeChat.title).type}</p>
                 </div>
               </div>
             </div>
@@ -116,12 +131,16 @@ function GeneralSideBar({ chats, chatId, setChats, setChatId, setMessages, onNav
                     : 'bg-[#161616] border-[#2A2A2A] text-[#9A9A9A] hover:bg-[#1E1E1E]'
                 }`}
               >
-                <span className="truncate text-xs pr-2 font-mono">{c.title}</span>
+                <span className="truncate text-xs pr-2 font-mono" title={capitalizeTitle(c.title)}>{capitalizeTitle(c.title)}</span>
                 <button 
                   onClick={(e) => handleDelete(c.chat_id, e)}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-400 font-sans cursor-pointer px-1 text-xs text-[#9A9A9A] transition"
+                  className="opacity-0 group-hover:opacity-100 p-1 text-[#9A9A9A] hover:text-red-400 rounded transition cursor-pointer shrink-0"
+                  title="Delete chat"
                 >
-                  ✕
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
                 </button>
               </div>
             ))}

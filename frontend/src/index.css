@@ -1,9 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Fraunces", serif;
-  --font-body: "Plus Jakarta Sans", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-sans: "Plus Jakarta Sans", "Manrope", system-ui, -apple-system, sans-serif;
+  --font-serif: "Source Serif 4", "Lora", Georgia, serif;
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", monospace;
+  --font-display: "Plus Jakarta Sans", "Manrope", sans-serif;
+  --font-body: "Plus Jakarta Sans", "Manrope", sans-serif;
+
+  --color-slate-dark: #121824;
+  --color-slate-primary: #27374D;
+  --color-slate-secondary: #526D82;
+  --color-slate-frost: #9DB2BF;
+  --color-ice-light: #DDE6ED;
 }
 
 html {
@@ -11,9 +19,9 @@ html {
 }
 
 html, body {
-  background-color: #0A0A0A;
-  color: #E8E8E8;
-  font-family: var(--font-body);
+  background-color: #0B0E14;
+  color: #DDE6ED;
+  font-family: var(--font-sans);
   margin: 0;
   padding: 0;
   height: 100%;
@@ -26,8 +34,26 @@ html, body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-in {
+  animation: slideInLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Scroll Reveal Classes */
@@ -43,12 +69,149 @@ html, body {
   transform: translateY(0);
 }
 
-/* Hide scrollbars globally but keep native scrolling functionality */
+/* Sleek, modern custom scrollbars globally */
 ::-webkit-scrollbar {
-  display: none;
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+/* Dedicated custom scrollbar class for cards and compact lists */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
+/* Print stylesheet for legal audit reports and redline counter-proposals */
+@media print {
+  /* 1. Unconstrain viewport and scroll containers so pages flow naturally */
+  html, body, #root, .fixed, [class*="max-h-"], [class*="overflow-"], [style*="scrollbar-width"] {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    position: static !important;
+  }
+
+  /* 2. Hide everything on the page except the printable report */
+  body * {
+    visibility: hidden;
+  }
+  #printable-export-content,
+  #printable-export-content * {
+    visibility: visible;
+  }
+
+  /* 3. Position the report cleanly at the top of page 1 */
+  #printable-export-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 12mm 15mm;
+    background: #ffffff !important;
+    color: #111827 !important;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* 4. Page-break guards to prevent items being cut across page borders */
+  .print-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* 5. Clean professional styling for white paper printout */
+  #printable-export-content .bg-\[\#141414\],
+  #printable-export-content .bg-\[\#121212\],
+  #printable-export-content .bg-zinc-900\/60 {
+    background: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+  }
+
+  #printable-export-content .bg-red-950\/15,
+  #printable-export-content .bg-red-950\/20 {
+    background: #fef2f2 !important;
+    border: 1px solid #fecaca !important;
+  }
+
+  #printable-export-content .bg-emerald-950\/20 {
+    background: #ecfdf5 !important;
+    border: 1px solid #a7f3d0 !important;
+  }
+
+  #printable-export-content .text-white,
+  #printable-export-content .text-zinc-200,
+  #printable-export-content .text-zinc-300 {
+    color: #111827 !important;
+  }
+
+  #printable-export-content .text-zinc-400,
+  #printable-export-content .text-zinc-500 {
+    color: #4b5563 !important;
+  }
+
+  #printable-export-content .text-red-400,
+  #printable-export-content .text-red-500 {
+    color: #b91c1c !important;
+  }
+
+  #printable-export-content .text-emerald-400,
+  #printable-export-content .text-emerald-300 {
+    color: #047857 !important;
+  }
+
+  #printable-export-content .border-\[\#222\],
+  #printable-export-content .border-zinc-800 {
+    border-color: #e5e7eb !important;
+  }
+}

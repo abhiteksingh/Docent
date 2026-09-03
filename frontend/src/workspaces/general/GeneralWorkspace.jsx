@@ -4,6 +4,7 @@ import UploadZone from '../../components/UploadZone';
 import MessageList from '../../components/MessageList';
 import GeneralSideBar from './GeneralSideBar';
 import EntityExtractorClipboard from './EntityExtractorClipboard';
+import CitationDrawer from '../../components/CitationDrawer';
 import API_BASE from '../../api';
 
 function GeneralWorkspace({ chatId, setChatId, messages, setMessages, chats, setChats, onNavigateHome, workspaceType }) {
@@ -14,17 +15,83 @@ function GeneralWorkspace({ chatId, setChatId, messages, setMessages, chats, set
   const [selectedCitation, setSelectedCitation] = useState(null);
   const [contextChip, setContextChip] = useState(null);
   const [clipboardItems, setClipboardItems] = useState([]);
-  const [suggestions, setSuggestions] = useState([]);
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 2400);
+  };
 
   const currentChat = chats.find(c => c.chat_id === chatId);
   const isProcessing = currentChat?.status === "processing";
   const isFailed = currentChat?.status === "failed";
 
+  const [activePanel, setActivePanel] = useState(null); // null | "clipboard" | "entities"
+
   useEffect(() => {
     setError(null);
     setSelectedCitation(null);
     setContextChip(null);
+    setActivePanel(null);
   }, [chatId]);
+
+  // Load persisted pinned items from SQLite analysis_results_json
+  useEffect(() => {
+    if (currentChat && currentChat.analysis_results_json) {
+      try {
+        const parsed = JSON.parse(currentChat.analysis_results_json);
+        if (Array.isArray(parsed.pinned_responses)) {
+          setClipboardItems(parsed.pinned_responses);
+        } else if (Array.isArray(parsed.clipboard_items)) {
+          setClipboardItems(parsed.clipboard_items);
+        } else {
+          setClipboardItems([]);
+        }
+      } catch (e) {
+        console.error("Failed to parse pinned responses from chat", e);
+        setClipboardItems([]);
+      }
+    } else {
+      setClipboardItems([]);
+    }
+  }, [chatId, currentChat?.analysis_results_json]);
+
+  const persistClipboard = async (newItems) => {
+    if (!chatId) return;
+    try {
+      await fetch(`${API_BASE}/chats/${chatId}/clipboard`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: newItems })
+      });
+    } catch (err) {
+      console.error("Failed to persist clipboard items:", err);
+    }
+  };
+
+  const handlePinResponse = (responseItem) => {
+    setClipboardItems(prev => {
+      const exists = prev.some(item => item.answer === responseItem.answer);
+      let updated;
+      if (exists) {
+        showToast("Removed from Synthesis Clipboard");
+        updated = prev.filter(item => item.answer !== responseItem.answer);
+      } else {
+        showToast("📌 Pinned to Synthesis Clipboard");
+        const newItem = {
+          id: `pin-${Date.now()}`,
+          type: "response",
+          question: responseItem.question || "General Query",
+          answer: responseItem.answer,
+          citations: responseItem.citations || [],
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        updated = [...prev, newItem];
+      }
+      persistClipboard(updated);
+      return updated;
+    });
+  };
 
   const onDrop = async (acceptedFiles) => {
     setUploading(true);
@@ -115,7 +182,6 @@ function GeneralWorkspace({ chatId, setChatId, messages, setMessages, chats, set
         token_count: data.token_count,
         citations: data.citations
       }]);
-      setSuggestions(data.suggestions || []);
     } catch (err) {
       console.error(err);
     }
@@ -124,8 +190,39 @@ function GeneralWorkspace({ chatId, setChatId, messages, setMessages, chats, set
     }
   };
 
-  const handleSuggestionClick = (s) => {
-    setQuestion(s);
+  const handleSuggestionClick = async (suggestionText) => {
+    if (!suggestionText || chatLoading || isProcessing) return;
+    setQuestion("");
+    setChatLoading(true);
+    setContextChip(null);
+
+    try {
+      setMessages(prev => [...prev, { role: "user", content: suggestionText }]);
+
+      const response = await fetch(`${API_BASE}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          question: suggestionText,
+          page: null,
+          workspace_type: "chat"
+        })
+      });
+
+      const data = await response.json();
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: data.answer,
+        sources: data.sources,
+        token_count: data.token_count,
+        citations: data.citations
+      }]);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setChatLoading(false);
+    }
   };
 
   const handleDragOver = (e) => {
@@ -159,15 +256,74 @@ function GeneralWorkspace({ chatId, setChatId, messages, setMessages, chats, set
         onDrop={onDrop}
       />
 
-      {/* Center Chat Panel */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      {/* Main Workspace Area with Tool Selector & Smooth Slideout Drawer */}
+      <div className="flex-1 flex overflow-hidden bg-[#0A0A0A]">
+        
+        {/* Thin vertical tool selection bar */}
+        <div className="w-14 bg-[#121212] border-r border-[#2A2A2A] flex flex-col items-center py-4 gap-6 shrink-0 select-none">
+          <button
+            disabled={!chatId}
+            onClick={() => chatId && setActivePanel(activePanel === "clipboard" ? null : "clipboard")}
+            className={`p-2.5 rounded-xl transition-colors relative select-none ${
+              !chatId
+                ? "opacity-25 cursor-not-allowed text-zinc-600"
+                : activePanel === "clipboard"
+                  ? "bg-[#4C8DFF]/20 text-[#4C8DFF] cursor-pointer"
+                  : "text-zinc-400 hover:text-white cursor-pointer"
+            }`}
+            title={chatId ? "Clipboard" : "Upload or select a document to view clipboard"}
+          >
+            📋
+            {chatId && clipboardItems.length > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#4C8DFF] rounded-full animate-pulse" />
+            )}
+          </button>
+          <button
+            disabled={!chatId}
+            onClick={() => chatId && setActivePanel(activePanel === "entities" ? null : "entities")}
+            className={`p-2.5 rounded-xl transition-colors select-none ${
+              !chatId
+                ? "opacity-25 cursor-not-allowed text-zinc-600"
+                : activePanel === "entities"
+                  ? "bg-[#4C8DFF]/20 text-[#4C8DFF] cursor-pointer"
+                  : "text-zinc-400 hover:text-white cursor-pointer"
+            }`}
+            title={chatId ? "Key Terms" : "Upload or select a document to view key terms"}
+          >
+            🔍
+          </button>
+        </div>
+
+        {/* Smooth Slide-out Drawer Panel next to chat */}
         {chatId && (
+          <div 
+            className={`border-r border-[#2A2A2A] bg-[#161616] flex flex-col overflow-hidden shrink-0 select-none text-left transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              activePanel ? "w-[360px] opacity-100 p-6" : "w-0 opacity-0 p-0 border-r-0 pointer-events-none"
+            }`}
+          >
+            {activePanel && (
+              <EntityExtractorClipboard
+                chatId={chatId}
+                activeChat={chats.find(c => c.chat_id === chatId)}
+                clipboardItems={clipboardItems}
+                setClipboardItems={setClipboardItems}
+                onUpdateClipboard={(newItems) => persistClipboard(newItems)}
+                onSelectCitation={(cit) => setSelectedCitation(cit)}
+                defaultTab={activePanel}
+                onClose={() => setActivePanel(null)}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Always Centered and Spacious Chat Feed */}
+        <div className="flex-grow flex flex-col h-full overflow-hidden">
           <div className="h-16 border-b border-[#2A2A2A] px-6 flex items-center justify-between bg-[#161616]/40 select-none shrink-0">
             <div className="flex items-center gap-3">
               <span className="font-mono text-xs text-white font-medium">
-                {chats.find(c => c.chat_id === chatId)?.title}
+                {chatId ? chats.find(c => c.chat_id === chatId)?.title : "General Workspace"}
               </span>
-              {!isProcessing && !isFailed && (
+              {chatId && !isProcessing && !isFailed && (
                 <span className="bg-[#4C8DFF]/10 border border-[#4C8DFF]/20 text-[#4C8DFF] text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold">
                   General RAG ✓
                 </span>
@@ -179,127 +335,114 @@ function GeneralWorkspace({ chatId, setChatId, messages, setMessages, chats, set
               </button>
             </div>
           </div>
-        )}
 
-        <div className="flex-1 w-full px-6 py-6 flex flex-col overflow-hidden justify-center max-w-4xl mx-auto z-10">
-          
-          {error && (
-            <div className="mb-6 p-4 bg-red-950/20 border border-red-500/20 text-red-200 rounded-[20px] flex items-center justify-between backdrop-blur-xl animate-fade-in shadow-lg shrink-0">
-              <div className="flex items-center gap-3">
-                <span className="text-lg select-none">⚠️</span>
-                <p className="text-xs font-medium">{error}</p>
+          <div className="flex-1 flex flex-col h-full overflow-hidden p-6 max-w-none w-full px-8 z-10">
+            
+            {error && (
+              <div className="mb-6 p-4 bg-red-950/20 border border-red-500/20 text-red-200 rounded-[20px] flex items-center justify-between backdrop-blur-xl animate-fade-in shadow-lg shrink-0">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg select-none">⚠️</span>
+                  <p className="text-xs font-medium">{error}</p>
+                </div>
+                <button onClick={() => setError(null)} className="text-red-400 hover:text-red-200 text-xs font-semibold cursor-pointer">Dismiss</button>
               </div>
-              <button onClick={() => setError(null)} className="text-red-400 hover:text-red-200 text-xs font-semibold cursor-pointer">Dismiss</button>
-            </div>
-          )}
+            )}
 
-          {!chatId && (
-            <UploadZone uploading={uploading} getInputProps={getInputProps} getRootProps={getRootProps} />
-          )}
+            {!chatId && (
+              <div className="flex-1 flex flex-col items-center justify-center">
+                <UploadZone uploading={uploading} getInputProps={getInputProps} getRootProps={getRootProps} />
+              </div>
+            )}
 
-          {chatId && (
-            <>
-              <MessageList
-                messages={messages}
-                chatLoading={chatLoading}
-                isProcessing={isProcessing}
-                isFailed={isFailed}
-                onSelectCitation={(cit) => setSelectedCitation(cit)}
-              />
-
-              <div className="mt-4 flex flex-col gap-3 shrink-0">
-                <form 
-                  onSubmit={handleChatSubmit}
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                  className="bg-[#161616] border border-[#2A2A2A] rounded-xl p-2.5 flex items-center gap-3 shadow-inner"
-                >
-                  {contextChip && (
-                    <div className="flex items-center gap-1.5 bg-[#4C8DFF]/15 border border-[#4C8DFF]/25 text-[#4C8DFF] font-mono text-[9px] font-bold px-3 py-1.5 rounded-full shrink-0 select-none animate-fade-in">
-                      <span>[Context: p.{contextChip.page} - {contextChip.header}]</span>
-                      <button type="button" onClick={() => setContextChip(null)} className="hover:text-red-400 cursor-pointer text-[10px] ml-1">✕</button>
-                    </div>
-                  )}
-
-                  <input
-                    type="text"
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
-                    disabled={chatLoading || isProcessing}
-                    placeholder="Ask your files anything or drop a graph node..."
-                    className="flex-1 bg-transparent text-xs text-white placeholder-[#9A9A9A] outline-none min-w-0"
+            {chatId && (
+              <>
+                <div className="flex-1 overflow-y-auto mb-4" style={{ scrollbarWidth: 'thin' }}>
+                  <MessageList
+                    messages={messages}
+                    chatLoading={chatLoading}
+                    isProcessing={isProcessing}
+                    isFailed={isFailed}
+                    onSelectCitation={(cit) => setSelectedCitation(cit)}
+                    onPinResponse={handlePinResponse}
+                    pinnedItems={clipboardItems}
                   />
+                </div>
 
-                  <button
-                    type="submit"
-                    disabled={!question.trim() || chatLoading || isProcessing}
-                    className="bg-[#4C8DFF] hover:bg-[#6FA2FF] disabled:bg-[#161616] text-white px-5 py-2 rounded-full text-xs font-semibold cursor-pointer shrink-0"
-                  >
-                    Send
-                  </button>
-                </form>
-
-                {/* Follow-up suggestions */}
-                {suggestions && suggestions.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-1 select-none animate-fade-in">
-                    {suggestions.map((s, idx) => (
+                <div className="flex flex-col gap-2 shrink-0">
+                  {/* Curated quick-action prompt chips ABOVE the input */}
+                  <div className="flex flex-wrap items-center gap-1.5 select-none font-sans">
+                    {[
+                      { icon: "📄", text: "Comprehensive summary & key takeaways" },
+                      { icon: "🔍", text: "Extract all key terms, dates & definitions" },
+                      { icon: "📊", text: "Outline major sections & structural highlights" },
+                      { icon: "❓", text: "What are the core topics & problems addressed?" }
+                    ].map((action, idx) => (
                       <button
                         key={idx}
-                        onClick={() => handleSuggestionClick(s)}
-                        className="text-[9px] bg-[#161616] hover:bg-[#4C8DFF]/10 text-[#9A9A9A] hover:text-[#4C8DFF] border border-[#2A2A2A] hover:border-[#4C8DFF]/30 px-3 py-1.5 rounded-full transition text-left cursor-pointer"
+                        type="button"
+                        onClick={() => handleSuggestionClick(action.text)}
+                        disabled={chatLoading || isProcessing}
+                        className="text-[9px] bg-[#161616] hover:bg-[#4C8DFF]/15 text-[#9A9A9A] hover:text-[#4C8DFF] border border-[#2A2A2A] hover:border-[#4C8DFF]/40 px-2.5 py-1 rounded-full cursor-pointer transition shadow-2xs font-medium flex items-center gap-1.5 disabled:opacity-50"
                       >
-                        💡 {s}
+                        <span>{action.icon}</span>
+                        <span>{action.text}</span>
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
-            </>
-          )}
 
+                  <form 
+                    onSubmit={handleChatSubmit}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    className="bg-[#161616] border border-[#2A2A2A] rounded-xl p-2.5 flex items-center gap-3 focus-within:border-[#4C8DFF]/50 shadow-sm"
+                  >
+                    {contextChip && (
+                      <div className="flex items-center gap-1.5 bg-[#4C8DFF]/15 border border-[#4C8DFF]/25 text-[#4C8DFF] font-mono text-[9px] font-bold px-3 py-1.5 rounded-full shrink-0 select-none animate-fade-in">
+                        <span>[Context: p.{contextChip.page} - {contextChip.header}]</span>
+                        <button type="button" onClick={() => setContextChip(null)} className="hover:text-red-400 cursor-pointer text-[10px] ml-1">✕</button>
+                      </div>
+                    )}
+
+                    <input
+                      type="text"
+                      value={question}
+                      onChange={(e) => setQuestion(e.target.value)}
+                      onDragOver={handleDragOver}
+                      onDrop={handleDrop}
+                      disabled={chatLoading || isProcessing}
+                      placeholder="Ask your files anything..."
+                      className="flex-1 bg-transparent text-xs text-white placeholder-[#9A9A9A] outline-none min-w-0 font-sans"
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={!question.trim() || chatLoading || isProcessing}
+                      className="bg-[#4C8DFF] hover:bg-[#6FA2FF] disabled:opacity-40 text-white px-5 py-2 rounded-full text-xs font-semibold cursor-pointer shrink-0 transition"
+                    >
+                      Send
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
+
+          </div>
         </div>
       </div>
 
-      {chatId && (
-        <EntityExtractorClipboard
-          chatId={chatId}
-          activeChat={chats.find(c => c.chat_id === chatId)}
-          clipboardItems={clipboardItems}
-          setClipboardItems={setClipboardItems}
-        />
-      )}
+      {/* Unified Slide-in Reference Drawer */}
+      <CitationDrawer
+        isOpen={Boolean(selectedCitation)}
+        onClose={() => setSelectedCitation(null)}
+        citation={selectedCitation}
+        isLight={false}
+        accentColor="#4C8DFF"
+      />
 
-      {selectedCitation && (
-        <div className="absolute right-0 top-0 h-full w-[320px] bg-[#161616] border-l border-[#2A2A2A] shadow-2xl z-30 p-6 flex flex-col gap-4 animate-fade-in text-xs select-none font-mono">
-          <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-4">
-            <h4 className="font-display text-sm text-white font-medium">Reference Excerpt</h4>
-            <button onClick={() => setSelectedCitation(null)} className="text-xs text-[#9A9A9A] hover:text-white transition cursor-pointer">✕ Close</button>
-          </div>
-          
-          <div className="flex justify-between items-center bg-[#0A0A0A] border border-[#2A2A2A] p-3.5 rounded-xl select-none">
-            <span className="text-[10px] text-[#9A9A9A] font-mono">Location</span>
-            <span className="font-mono text-[9px] bg-[#4C8DFF]/15 border border-[#4C8DFF]/20 text-[#4C8DFF] px-2.5 py-0.5 rounded font-bold">
-              {selectedCitation.filename ? `${selectedCitation.filename.split('/').pop().split('\\').pop()}, ` : ""}p.{selectedCitation.page}
-            </span>
-          </div>
-
-          <div className="flex-1 overflow-y-auto text-xs leading-relaxed text-zinc-300 bg-[#0A0A0A] border border-[#2A2A2A] p-4 rounded-xl italic text-left">
-            "{selectedCitation.text}"
-          </div>
-
-          <button
-            onClick={() => {
-              if (!clipboardItems.some(item => item.text === selectedCitation.text)) {
-                setClipboardItems(prev => [...prev, selectedCitation]);
-              }
-              setSelectedCitation(null);
-            }}
-            className="w-full py-2.5 bg-[#4C8DFF] hover:bg-[#6FA2FF] text-white rounded-xl font-bold tracking-wider text-xs transition cursor-pointer uppercase shrink-0"
-          >
-            Pin to Clipboard
-          </button>
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-24 right-8 bg-[#18191C] border border-[#333] text-white px-4 py-2.5 rounded-xl text-xs shadow-2xl animate-fade-in z-50 flex items-center gap-2 font-sans font-medium backdrop-blur-md">
+          <span>{toastMessage}</span>
         </div>
       )}
 

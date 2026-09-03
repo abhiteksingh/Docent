@@ -69,7 +69,7 @@ function App() {
       <Route
         path={ROUTES.CHAT.path}
         element={
-          <div className="h-screen flex bg-[#0A0A0A] text-[#E8E8E8] font-body overflow-hidden" data-workspace={ROUTES.CHAT.name}>
+          <div className="h-screen flex bg-[#0B0E14] text-[#DDE6ED] font-sans overflow-hidden" data-workspace={ROUTES.CHAT.name}>
             <div className="flex-1 min-w-0 h-screen">
               <GeneralWorkspace {...workspaceProps} workspaceType={ROUTES.CHAT.name} />
             </div>
@@ -79,7 +79,7 @@ function App() {
       <Route
         path={ROUTES.AUDITOR.path}
         element={
-          <div className="h-screen flex bg-[#0A0A0A] text-[#E8E8E8] font-body overflow-hidden" data-workspace={ROUTES.AUDITOR.name}>
+          <div className="h-screen flex bg-[#0B0E14] text-[#DDE6ED] font-sans overflow-hidden" data-workspace={ROUTES.AUDITOR.name}>
             <div className="flex-1 min-w-0 h-screen">
               <ContractAuditorWorkspace {...workspaceProps} workspaceType={ROUTES.AUDITOR.name} />
             </div>
@@ -89,7 +89,7 @@ function App() {
       <Route
         path={ROUTES.LEARNING.path}
         element={
-          <div className="h-screen flex bg-[#0A0A0A] text-[#E8E8E8] font-body overflow-hidden" data-workspace={ROUTES.LEARNING.name}>
+          <div className="h-screen flex bg-[#0B0E14] text-[#DDE6ED] font-sans overflow-hidden" data-workspace={ROUTES.LEARNING.name}>
             <div className="flex-1 min-w-0 h-screen">
               <SpacedLearningWorkspace {...workspaceProps} workspaceType={ROUTES.LEARNING.name} />
             </div>
@@ -99,7 +99,7 @@ function App() {
       <Route
         path={ROUTES.ANALYTICS.path}
         element={
-          <div className="h-screen flex bg-[#0A0A0A] text-[#E8E8E8] font-body overflow-hidden" data-workspace={ROUTES.ANALYTICS.name}>
+          <div className="h-screen flex bg-[#0B0E14] text-[#DDE6ED] font-sans overflow-hidden" data-workspace={ROUTES.ANALYTICS.name}>
             <div className="flex-1 min-w-0 h-screen">
               <SpreadsheetAnalyticsWorkspace {...workspaceProps} workspaceType={ROUTES.ANALYTICS.name} />
             </div>
@@ -109,7 +109,7 @@ function App() {
       <Route
         path={ROUTES.SIMULATOR.path}
         element={
-          <div className="h-screen flex bg-[#0A0A0A] text-[#E8E8E8] font-body overflow-hidden" data-workspace={ROUTES.SIMULATOR.name}>
+          <div className="h-screen flex bg-[#0B0E14] text-[#DDE6ED] font-sans overflow-hidden" data-workspace={ROUTES.SIMULATOR.name}>
             <div className="flex-1 min-w-0 h-screen">
               <InterviewSimulatorWorkspace {...workspaceProps} workspaceType={ROUTES.SIMULATOR.name} />
             </div>

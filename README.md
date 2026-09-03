@@ -1,16 +1,13 @@
-# 📄 PDF Chatbot (RAG & Web-Fallback Assistant)
+# 📄 Docent: Enterprise Multi-Workspace Document Intelligence & RAG Platform
 
-Welcome to the **PDF Chatbot** codebase! This project is a full-stack Retrieval-Augmented Generation (RAG) application that allows users to upload PDF documents, extract and index their contents, and chat with them in real-time. 
-
-Additionally, the system features a **dynamic web-fallback mechanism**: if a user's question cannot be answered closely by the PDF content (based on FAISS similarity search distance), it automatically queries DuckDuckGo for additional web context to provide accurate answers.
+> **Engineered for the Razorpay Hackathon**  
+> Docent is a production-grade, asynchronous **Retrieval-Augmented Generation (RAG)** platform designed to replace generic, one-size-fits-all chatbots with **isolated, specialized AI workspaces**. Each workspace implements customized ingestion chunking topologies, tailored retrieval algorithms, and deterministic mathematical engines.
 
 ---
 
-## 🏗️ Architecture Overview
+## 🏗️ System Architecture
 
-The system operates on a client-server model consisting of a **React + Vite** frontend and a **FastAPI** backend powered by **LangChain**, **LangGraph**, and **SQLite**.
-
-### System Data Flow Diagram
+Docent is built on a decoupled, asynchronous architecture featuring **React 19 + Tailwind CSS v4** on the frontend and **FastAPI + SQLAlchemy + LangGraph + Pinecone** on the backend.
 
 ```mermaid
 graph TD
@@ -20,254 +17,167 @@ graph TD
     classDef db fill:#313244,stroke:#f5c2e7,stroke-width:2px,color:#cdd6f4;
     classDef llm fill:#181825,stroke:#a6e3a1,stroke-width:2px,color:#a6e3a1;
 
-    %% Ingestion Flow
-    subgraph Frontend [React Frontend]
-        Dropzone["Drag & Drop PDF (UploadZone.jsx)"]
-        ChatInterface["Chat UI (Chat.jsx)"]
+    subgraph Frontend [React 19 SPA Frontend]
+        Dropzone["Universal Multi-Format Dropzone"]
+        Workspaces["5 Isolated Workspaces (workspaces/*)"]
+        ConceptGraph["3D Force-Directed Graph Visualizer"]
     end
     class Frontend frontend;
 
-    subgraph Backend [FastAPI Backend]
-        API_Upload["POST /upload"]
-        API_Chat["POST /chat"]
-        PDF_Extractor["extract_pdf_text (pypdf)"]
-        Text_Splitter["split_text (RecursiveCharacterTextSplitter)"]
-        Embeddings["get_embeddings (Sentence-Transformers)"]
-        FAISS_Store["FAISS Vector Store"]
-        Web_Search["web_search_context (DuckDuckGo ddgs)"]
-        LangGraph_Workflow["LangGraph StateGraph Node"]
+    subgraph Backend [FastAPI Asynchronous Backend]
+        API_Upload["POST /upload (BackgroundTasks)"]
+        API_Chat["POST /chat (LangGraph Router)"]
+        Parser_Service["ParserService (PyMuPDF + RapidOCR + Zero-Dep Office)"]
+        Retrieval_Service["RetrievalService (Dense + In-Memory BM25 + RRF)"]
+        Pinecone_Store["PineconeVectorService (UUID Namespaces)"]
+        LangGraph_Workflow["LangGraph State Orchestrator"]
     end
     class Backend backend;
 
-    subgraph Storage [Persistent Storage]
-        SQLite_DB["SQLite (chat.db)"]
-        Vector_Files["FAISS Local Storage (vectorstores/*)"]
+    subgraph Storage [Persistent Storage Layer]
+        SQLite_DB["SQLite Database (chat.db via SQLAlchemy)"]
+        Pinecone_Index["Pinecone Vector Store (Serverless)"]
     end
     class Storage db;
 
-    subgraph LLM_Service [External LLM]
-        Groq_LLM["llama-3.3-70b-versatile (ChatGroq)"]
+    subgraph LLM_Service [External Inference]
+        Groq_LLM["Llama 3.3 70B Versatile (ChatGroq)"]
     end
     class LLM_Service llm;
 
-    %% Data flow mapping
-    Dropzone -->|PDF Files| API_Upload
-    API_Upload --> PDF_Extractor
-    PDF_Extractor -->|Raw Text| Text_Splitter
-    Text_Splitter -->|Text Chunks| Embeddings
-    Embeddings --> FAISS_Store
-    FAISS_Store -->|Save local index| Vector_Files
-    API_Upload -->|Create chat & ID| SQLite_DB
+    %% Data Flow
+    Dropzone -->|Files Ingest| API_Upload
+    API_Upload --> Parser_Service
+    Parser_Service -->|Parent-Child Chunks| Pinecone_Store
+    Pinecone_Store -->|Index Embeddings| Pinecone_Index
+    API_Upload -->|Create Session & Track Status| SQLite_DB
 
-    ChatInterface -->|Question & Chat ID| API_Chat
-    API_Chat -->|Load Index| Vector_Files
-    API_Chat -->|Similarity Search| FAISS_Store
-    FAISS_Store -->|Relevance Score Metric| Score_Check{Distance > 1.2?}
+    Workspaces -->|User Query + Page Filter| API_Chat
+    API_Chat --> Retrieval_Service
+    Retrieval_Service -->|1. Dense Similarity Search| Pinecone_Index
+    Retrieval_Service -->|2. In-Memory BM25 Lexical Search| SQLite_DB
+    Retrieval_Service -->|3. Reciprocal Rank Fusion (k=60)| FinalContext[Assemble Grounded Context + Citations]
     
-    Score_Check -->|Yes: Fallback| Web_Search
-    Score_Check -->|No: PDF Match| Context_Assembly[Assemble Context]
-    Web_Search --> Context_Assembly
-    
-    API_Chat -->|Fetch Chat History| SQLite_DB
-    SQLite_DB -->|Last 10 messages| Context_Assembly
-    
-    Context_Assembly -->|Prompt Template| LangGraph_Workflow
-    LangGraph_Workflow -->|ainvoke| Groq_LLM
-    Groq_LLM -->|Response Content| Token_Counter[LiteLLM Token Counter]
-    
-    Token_Counter -->|Save message & tokens| SQLite_DB
-    Token_Counter -->|Return Answer + Sources| ChatInterface
+    API_Chat -->|Load Session History| SQLite_DB
+    FinalContext -->|Prompt State| LangGraph_Workflow
+    LangGraph_Workflow -->|Execute Socratic / Audit Agent| Groq_LLM
+    Groq_LLM -->|Grounded Stream + Interactive Citations| Workspaces
 ```
 
 ---
 
-## 🛠️ Technology Stack
+## 🧠 Workspaces & Persona Matrix
 
-### Backend
-- **Framework:** FastAPI (Python)
-- **RAG & Agent Orchestration:** 
-  - [LangGraph](https://github.com/langchain-ai/langgraph) (StateGraph workflow control)
-  - [LangChain](https://github.com/langchain-ai/langchain) (Vectorstores, Embedding interfaces, ChatPromptTemplate)
-- **Embeddings:** HuggingFace `sentence-transformers/all-MiniLM-L6-v2`
-- **Vector Database:** FAISS (Local filesystem storage)
-- **Language Model:** ChatGroq running `llama-3.3-70b-versatile`
-- **Fallback Search:** DuckDuckGo Search API (`ddgs`)
-- **Metadata/History Storage:** SQLite3 (Local `chat.db`)
-- **Token Tracking:** LiteLLM token counter
+Each workspace is completely decoupled with dedicated state management, retrieval parameters, and calculation engines:
 
-### Frontend
-- **Framework:** React 19 + Vite (Single Page Application)
-- **Styling:** Tailwind CSS (v4)
-- **File Upload:** React Dropzone
-- **HTTP Client:** Native browser `fetch` API
+| Workspace | Status | Chunking Topology | Retrieval Mode | LLM Temp | Analytical Engine | Core Capabilities |
+|---|---|---|---|---|---|---|
+| **💬 General Chat** | 🟢 **Production Ready** | Parent: 1200 / Child: 300 | `HYBRID` (50/50 RRF) | `0.4` | Canonical Concept Tree | Multi-page Q&A, interactive `[p.X]` citations, 3D force-directed concept graphs. |
+| **🛡️ Contract Auditor** | 🟢 **Production Ready** | Parent: 1000 / Child: 200 | `HYBRID` (80% BM25 / 20% Dense) | `0.0` | 10-Safeguard Scanner | 4-Axis SVG Risk Radar, liability alerts, missing clause detector, counter-clause redlines. |
+| **🎓 Spaced Learning** | 🟢 **Production Ready** | Parent: 1500 / Child: 500 | `HYBRID` (50/50 RRF) | `0.5` | SuperMemo SM-2 & Forgetting Decay | 3D Flashcard flip-carousel, Concept mastery heatmap matrix, closed-book retrieval quizzes. |
+| **📊 Spreadsheet Analytics** | 🟡 **Active WIP Preview** | Parent: 1200 / Child: 300 | `HYBRID` (70% BM25 / 30% Dense) | `0.1` | Monte Carlo (150 runs) + Goal-Seek | Row-by-row serialization, interactive variable sliders, Tornado sensitivity charts. |
+| **💼 CV / Interview Simulator** | 🟡 **Active WIP Preview** | Parent: 800 / Child: 150 | `DOCUMENT` Granularity | `0.3` | ATS Scoring + Hedging Ratio | Whole-document STAR evaluator, ATS keyword scoring, verbal confidence trajectory. |
 
 ---
 
-## 📂 Project Directory Structure
+## ⚡ Core Engineering Differentiators
 
-Here is a guide to the repository files:
+### 1. Zero-Dependency Native Office Ingestion Engine
+Unlike typical RAG stacks that rely on heavy external binary dependencies or C++ wrappers, Docent parses Word (`.docx`), PowerPoint (`.pptx`), and Excel (`.xlsx`) files using native Python `zipfile` and `xml.etree.ElementTree`. This guarantees lightweight, sub-50ms ingestion on Windows and Linux without binary compilation overhead. For PDF files, PyMuPDF with RapidOCR fallback guarantees high-accuracy text extraction across both digital text streams and scanned pages.
 
-```markdown
-PDF-Chatbot/
-├── backend/
-│   ├── main.py              # FastAPI endpoints, LangGraph orchestrator, and application entry point
-│   ├── rag.py               # PDF text extraction, chunking, embedding, FAISS operations, and DuckDuckGo search
-│   ├── database.py          # SQLite database connection setup and CRUD queries for chats & messages
-│   ├── PromptTemplate.py    # Strict system instruction prompt template for the RAG LLM
-│   ├── schemas.py           # Pydantic request models for input validation
-│   ├── chat.db              # SQLite Database file storing conversation state (generated automatically)
-│   └── vectorstores/        # Directory containing FAISS indexes serialized to disk (generated automatically)
-│
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx          # Top-level React container managing workspace state (chat history, active chat ID)
-│   │   ├── App.css          # Core visual style styles override
-│   │   ├── main.jsx         # React application entry point
-│   │   ├── index.css        # Tailwind and base CSS configurations
-│   │   └── components/
-│   │       ├── Chat.jsx         # Primary chat workspace controller coordinating APIs, dropzones, and forms
-│   │       ├── SideBar.jsx      # Navigation bar listing chat histories and providing deleting actions
-│   │       ├── ChatHeader.jsx   # Top branding banner
-│   │       ├── UploadZone.jsx   # Clickable drag-and-drop zone for PDF files
-│   │       ├── PdfStatus.jsx    # Green status dot indicating a document is uploaded
-│   │       ├── MessageList.jsx  # Scrollable scroll container housing messages and loaders
-│   │       ├── MessageBubble.jsx# Context-colored chat bubbles displaying sources (PDF/Web) and tokens
-│   │       └── InputArea.jsx    # Textarea field handling send buttons and Enter triggers
-│   │
-│   ├── package.json         # Node.js dependencies and scripts configurations
-│   ├── vite.config.js       # Vite configuration file
-│   └── eslint.config.js     # ESLint code syntax check config
-│
-└── .gitignore               # Ignored local files, databases, and dependencies
+### 2. Custom Hybrid Retrieval (Dense Vector + Sparse BM25 + Reciprocal Rank Fusion)
+To solve the dual challenges of semantic abstraction and exact keyword/clause lookup, Docent implements Reciprocal Rank Fusion ($k=60$):
+$$\text{RRF\_Score}(d) = \sum_{m \in M} \frac{1}{k + r_m(d)}$$
+This fuses dense Pinecone vector embeddings with in-memory BM25 lexical inverted indices, ensuring exact clause references, numerical figures, and semantic intent are retrieved simultaneously.
+
+### 3. Deterministic Mathematical & Analytical Solvers
+* **Ebbinghaus Memory Decay ($R = e^{-\Delta t / S}$)**: Computes real-time forgetting curves and SuperMemo SM-2 interval expansion ($EF' = EF + (0.1 - (5 - q) \times (0.08 + (5 - q) \times 0.02))$).
+* **Monte Carlo Simulation & Goal-Seek**: Runs 150 Gaussian-perturbed iterations across model parameters to plot outcome probability distributions and converges on exact input variables via binary search.
+* **10-Category Commercial Safeguard Scanner**: Scans contracts against 10 critical commercial protection categories (*Indemnification*, *Limitation of Liability*, *Termination for Convenience*, *Force Majeure*, etc.) to detect unmitigated corporate risk.
+
+---
+
+## 🛠️ Tech Stack
+
+* **Frontend**: React 19, Vite, Tailwind CSS v4, Three.js / React Force Graph, Lucide Icons.
+* **Backend**: FastAPI (Python 3.11+), SQLAlchemy (Async), aiosqlite, LangGraph, LangChain Core.
+* **Vector Database**: Pinecone Cloud (Serverless, UUID namespaced).
+* **LLM Inference**: ChatGroq (`llama-3.3-70b-versatile`).
+* **Document Ingestion**: PyMuPDF, RapidOCR ONNX, Native Zero-Dependency Office XML Parsers.
+
+---
+
+## 🚀 Quickstart Guide
+
+### Prerequisites
+* Python 3.11+
+* Node.js 18+ & npm
+* Groq API Key ([console.groq.com](https://console.groq.com/keys))
+* Pinecone API Key ([app.pinecone.io](https://app.pinecone.io/))
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/abhiteksingh/Docent.git
+cd Docent
 ```
 
----
+### 2. Backend Setup
+```bash
+# Create and activate virtual environment
+python -m venv backend/venv
+# Windows:
+backend\venv\Scripts\activate
+# Linux/macOS:
+# source backend/venv/bin/activate
 
-## 🔌 API Endpoints Reference
+# Install dependencies
+pip install -r requirements.txt
 
-The FastAPI backend exposes the following REST API endpoints:
+# Configure environment variables
+cp .env.example .env
+# Edit .env and supply your GROQ_API_KEY and PINECONE_API_KEY
+```
 
-| Method | Endpoint | Description | Request Body / Parameters | Response Payload |
-| :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/upload` | Receives PDF binary files, extracts text, chunks, computes embeddings, creates FAISS index, writes chat record to SQLite database. | Multipart form containing `files: list[UploadFile]` | `{ "chat_id": str, "title": str }` |
-| `POST` | `/chat` | Runs similarity search over the document's vector store. If L2 distance > 1.2, fetches web search results, compiles prompt history, executes LLM node, saves chat message log. | Request_Format: `{ "chat_id": str, "question": str }` | `{ "answer": str, "sources": list[str], "token_count": int }` |
-| `POST` | `/messages` | Retrieves all messages stored for a specific conversation ID. | Request_Messages: `{ "chat_id": str }` | `{ "messages": [ { "role": str, "content": str, "token_count": int } ] }` |
-| `GET` | `/chats` | Retrieves all past chat sessions. | None | `{ "chats": [ { "chat_id": str, "title": str } ] }` |
-| `DELETE`| `/delete` | Deletes chat logs, messages in SQLite, and cleans up the local FAISS index folder. | Request_Delete: `{ "chat_id": str }` | `{ "success": bool }` |
+### 3. Frontend Setup
+```bash
+cd frontend
+npm install
+```
 
----
+### 4. Run Locally
+**Start Backend Server:**
+```bash
+# From workspace root:
+backend\venv\Scripts\python -m uvicorn backend.app.main:app --reload --port 8000
+```
 
-## 🧠 Core Component Walkthrough
-
-### Backend Logic
-
-1. **FastAPI & LangGraph Workflow ([main.py](file:///c:/Projects/Pdf-Chatbot/PDF-Chatbot/backend/main.py)):**
-   - Implements a single-node `StateGraph` which invokes `ChatGroq(llama-3.3-70b-versatile)`.
-   - The state includes `chat_id`, `context`, `question`, `answer`, and `token_count`.
-   - Before compiling the prompt, `chat_node` loads the last 10 messages from the database to supply context to the LLM.
-
-2. **RAG Services ([rag.py](file:///c:/Projects/Pdf-Chatbot/PDF-Chatbot/backend/rag.py)):**
-   - **Text Extraction:** Uses `pypdf` to read bytes and combine page contents.
-   - **Chunking:** `RecursiveCharacterTextSplitter` segments the text with a `chunk_size` of 500 characters and `chunk_overlap` of 100 characters.
-   - **Embedding:** Maps text chunks to dense vectors using `sentence-transformers/all-MiniLM-L6-v2`.
-   - **Vector Store:** Saves and loads a FAISS index on disk inside `vectorstores/{chat_id}`.
-   - **Web Fallback:** Invokes DuckDuckGo text search to fetch the top 5 relevant web page descriptions if FAISS search L2 distance exceeds `1.2`.
-
-3. **Storage & Models ([database.py](file:///c:/Projects/Pdf-Chatbot/PDF-Chatbot/backend/database.py) & [schemas.py](file:///c:/Projects/Pdf-Chatbot/PDF-Chatbot/backend/schemas.py)):**
-   - Automatically initializes `chat.db` with schema schemas:
-     - `chats`: `id` (UUID), `title` (Original PDF filename).
-     - `messages`: `id` (Auto-increment), `chat_id`, `role` (user/assistant), `content`, `token_count`.
-
-4. **System Instruction Prompt ([PromptTemplate.py](file:///c:/Projects/Pdf-Chatbot/PDF-Chatbot/backend/PromptTemplate.py)):**
-   - Dictates strict constraints for LLM compliance:
-     - Must only answer using the provided context.
-     - Never invent facts or use external training knowledge.
-     - Favor PDF content, fallback to Web context only when necessary.
-     - Must output `"I cannot find that information in the provided sources."` if context is empty.
-
-### Frontend Logic
-
-1. **State Orchestration ([App.jsx](file:///c:/Projects/Pdf-Chatbot/PDF-Chatbot/frontend/src/App.jsx)):**
-   - Serves as the central state hub. Shares chats, current chat ID, and active message history across components.
-
-2. **SideBar Management ([SideBar.jsx](file:///c:/Projects/Pdf-Chatbot/PDF-Chatbot/frontend/src/components/SideBar.jsx)):**
-   - Queries `GET /chats` on mount to display chat history lists.
-   - Triggers message histories fetch on chat selection.
-   - Handles the deletion flow.
-
-3. **Main Dashboard ([Chat.jsx](file:///c:/Projects/Pdf-Chatbot/PDF-Chatbot/frontend/src/components/Chat.jsx)):**
-   - Toggles dynamically: if `chatId` is null, displays the PDF `UploadZone`. If `chatId` is active, mounts the conversation panel (`MessageList`, `InputArea`).
-   - Uses `react-dropzone` to handle PDF drops and initiates `POST /upload` requests.
+**Start Frontend Client:**
+```bash
+# In frontend directory:
+npm run dev
+```
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
-## ⚡ Setup & Launch Instructions
+## 🧪 Automated Testing Suite
 
-### Backend Setup
+Docent includes an end-to-end integration and workflow testing suite covering all 15 core architectural systems:
 
-> [!IMPORTANT]
-> The backend requires a valid Groq API Key to power the chatbot. Make sure you have created a Groq account and obtained an API key.
+```bash
+backend\venv\Scripts\python backend/test_app.py
+```
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-2. Create and activate a Python virtual environment:
-   ```bash
-   python -m venv venv
-   # On Windows (PowerShell):
-   .\venv\Scripts\Activate.ps1
-   # On macOS/Linux:
-   source venv/bin/activate
-   ```
-3. Install required packages:
-   ```bash
-   pip install fastapi uvicorn pypdf langchain-text-splitters langchain-huggingface langchain-community faiss-cpu langchain-groq litellm duckduckgo-search python-dotenv
-   ```
-4. Create a `.env` file in the `backend/` directory:
-   ```env
-   GROQ_API_KEY=your_groq_api_key_here
-   ```
-5. Spin up the FastAPI server:
-   ```bash
-   uvicorn main:app --reload
-   ```
-   *The backend will boot up at `http://127.0.0.1:8000`.*
-
-### Frontend Setup
-
-1. Navigate to the frontend directory:
-   ```bash
-   cd ../frontend
-   ```
-2. Install node dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the Vite React development server:
-   ```bash
-   npm run dev
-   ```
-   *The frontend application will compile and open at `http://localhost:5173`.*
+**Test Coverage Highlights:**
+- `[1/15]` In-memory SQLite schema initialization & async session isolation.
+- `[6/15]` Conversational RAG, citation grounding, and negative hallucination suppression.
+- `[8/15]` Contract Auditor 10-clause scan, risk radar, and counter-clause redlines.
+- `[10/15]` Interview Simulator whole-document STAR extraction & ATS scoring.
+- `[12/15]` Spaced Learning Socratic tutoring, SM-2 decay curves, and quiz compilation.
+- `[14/15]` Spreadsheet Analytics Monte Carlo distributions & sensitivity sweeps.
+- `[15/15]` Automated session deletion and vector store namespace cleanup.
 
 ---
 
-## 💡 Key Design Patterns Used
-
-- **Dual Context Retrieval (RAG & Web Fallback):** Combines localized similarity vector lookup with dynamic internet search, preventing hallucination while ensuring answers to outside-document questions remain grounded.
-- **Stateless/Stateful hybrid Agent workflow:** LangGraph models the chatbot response generation as a controlled, single-node graph, allowing for easy expansion into multi-agent workflows (e.g. adding separate reviewer, web searcher, or document-synthesizer agents).
-- **SQLite History Tracker:** Simple SQL queries save message histories by chat session UUIDs. This avoids session state management complexities and enables persistent session recall.
-- **Glassmorphism UX Design:** The front-end relies on elegant dark UI features (zinc backgrounds, glasslike backdrop-blurs, glowing input borders, and responsive button scale micro-animations).
-
----
-
-## 📝 Spaced Learning & Multi-Workspace Platform Notes (Temporary)
-
-- **Isolated Workspace Architecture**: All 5 specialized chatbots reside in self-contained directories under `frontend/src/workspaces/` (`general/`, `contract-auditor/`, `spaced-learning/`, `spreadsheet-analytics/`, `interview-simulator/`). Each workspace manages its own dedicated sidebar, chat area, and right utility pane.
-- **Database Partitioning**: SQLite chat logs and uploaded document records are partitioned via `workspace_type` filtering (`GET /chats?workspace_type=X`).
-- **Multi-Format Text Ingestion**: Supports PDF (PyMuPDF with RapidOCR fallback for scanned pages), DOCX, PPTX, XLSX, CSV, TXT, and MD. Office formats are parsed using native, zero-dependency Python `zipfile` and `xml.etree.ElementTree`.
-- **Concept Graph Node Deduplication**: Raw section titles undergo canonical subphrase normalization, Jaccard token overlap deduplication, and LLM-driven topic canonicalization to eliminate duplicate node clusters.
-- **Session Mastery Progress & Daily Streak Counter**: Features an SVG circular progress ring rendering overall document mastery (`HIGH` = 100%, `MEDIUM` = 60%, `LOW` = 20%), an active queue counter, and a `🔥 3-Day Study Streak`.
-- **Bi-Directional Mastery Synchronization**: Self-grading ratings (*Again* `#FF4C4C`, *Good* `#FFC107`, *Easy* `#3ECF8E`) immediately update canvas node dot colors in the 2D/3D Concept Graph.
-- **Node Popover Grade Controls**: Selected concept nodes in `ConceptGraph3D.jsx` display direct grade buttons (`🔴 Again`, `🟡 Good`, `🟢 Easy`) to adjust node mastery directly from the graph view.
-
+## 📜 License
+Distributed under the MIT License. See `LICENSE` for more information.

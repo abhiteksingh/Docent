@@ -1,7 +1,16 @@
 import { useEffect, useRef } from "react";
 import MessageBubble from "./MessageBubble";
 
-function MessageList({ messages, chatLoading, isProcessing, isFailed, onSelectCitation, isLight }) {
+function MessageList({
+  messages,
+  chatLoading,
+  isProcessing,
+  isFailed,
+  onSelectCitation,
+  isLight,
+  onPinResponse = null,
+  pinnedItems = []
+}) {
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -39,18 +48,34 @@ function MessageList({ messages, chatLoading, isProcessing, isFailed, onSelectCi
         </div>
       )}
 
-      {messages.map((message, index) => (
-        <MessageBubble
-          key={index}
-          role={message.role}
-          content={message.content}
-          sources={message.sources}
-          token_count={message.token_count}
-          citations={message.citations}
-          onSelectCitation={onSelectCitation}
-          isLight={isLight}
-        />
-      ))}
+      {messages.map((message, index) => {
+        let promptQuestion = "";
+        if (message.role === "assistant") {
+          for (let i = index - 1; i >= 0; i--) {
+            if (messages[i].role === "user") {
+              promptQuestion = messages[i].content;
+              break;
+            }
+          }
+        }
+        const isPinned = pinnedItems.some(p => p.answer === message.content);
+
+        return (
+          <MessageBubble
+            key={index}
+            role={message.role}
+            content={message.content}
+            sources={message.sources}
+            token_count={message.token_count}
+            citations={message.citations}
+            onSelectCitation={onSelectCitation}
+            isLight={isLight}
+            promptQuestion={promptQuestion}
+            onPinResponse={onPinResponse}
+            isPinned={isPinned}
+          />
+        );
+      })}
 
       {chatLoading && (
         <div className="flex justify-start">

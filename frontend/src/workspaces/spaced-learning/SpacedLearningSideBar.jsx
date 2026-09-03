@@ -1,27 +1,22 @@
 import { useState, useEffect } from 'react';
 import API_BASE from '../../api';
+import InfoTooltip from '../../components/InfoTooltip';
 
-function InfoTooltip({ text }) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <span className="relative group inline-block ml-1 select-none font-sans font-normal normal-case">
-      <span 
-        onMouseEnter={() => setVisible(true)}
-        onMouseLeave={() => setVisible(false)}
-        className="text-[8px] bg-[#EBE8E2] hover:bg-[#4C8DFF] text-zinc-500 hover:text-white w-3 h-3 inline-flex items-center justify-center rounded-full cursor-help font-bold transition-colors"
-      >
-        i
-      </span>
-      {visible && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-44 bg-white border border-[#EBE8E2] text-zinc-700 text-[8px] font-sans rounded-md p-2 shadow-xl z-50 leading-normal normal-case pointer-events-none text-left">
-          {text}
-        </span>
-      )}
-    </span>
-  );
-}
+const capitalizeFirst = (str) => {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};
 
-function SpacedLearningSideBar({ chats, chatId, setChats, setChatId, setMessages, onNavigateHome, onDrop, chapterOverrides = {}, setChapterOverrides }) {
+const formatDocTitle = (title = "") => {
+  if (!title) return "Document";
+  const capitalized = capitalizeFirst(title);
+  if (/\.[a-zA-Z0-9]+$/.test(capitalized)) {
+    return capitalized;
+  }
+  return `${capitalized}.pdf`;
+};
+
+function SpacedLearningSideBar({ chats, chatId, setChats, setChatId, setMessages, onNavigateHome, onDrop }) {
   useEffect(() => {
     async function fetchChats() {
       try {
@@ -111,31 +106,23 @@ function SpacedLearningSideBar({ chats, chatId, setChats, setChatId, setMessages
 
   const chapterList = Object.keys(chapters).map(name => {
     const data = chapters[name];
-    const autoStatus = (data.mastered / data.total) >= 0.66 ? "MASTERED" : "NEEDS_REVIEW";
-    const status = chapterOverrides[name] || autoStatus;
-    return { name, status, data, autoStatus };
+    const status = (data.mastered / data.total) >= 0.66 ? "MASTERED" : "NEEDS_REVIEW";
+    return { name, status, data };
   });
-
-  const toggleOverride = (name, currentStatus) => {
-    if (!setChapterOverrides) return;
-    const nextStatus = currentStatus === "MASTERED" ? "NEEDS_REVIEW" : "MASTERED";
-    setChapterOverrides(prev => ({
-      ...prev,
-      [name]: nextStatus
-    }));
-  };
 
   return (
     <div className="h-screen w-[280px] bg-[#FAF8F5] border-r border-[#EBE8E2] p-6 flex flex-col justify-between shrink-0 z-20 font-serif text-[#2C2C2A] select-none">
-      <div className="mb-6 flex items-center justify-between border-b border-[#EBE8E2] pb-4">
-        <div className="flex items-center gap-1.5 cursor-pointer font-sans" onClick={onNavigateHome}>
-          <span className="font-semibold text-xs tracking-widest text-[#4C8DFF] uppercase">STUDY ARCHIVE</span>
+      <div className="mb-6 flex items-center justify-between border-b border-[#EBE8E2] pb-4 select-none gap-2">
+        <div className="min-w-0 flex-1 select-none">
+          <span className="font-extrabold text-sm tracking-tight text-zinc-900 font-body select-none truncate block">
+            Spaced Learning
+          </span>
         </div>
         <button 
           onClick={handleNewChat} 
-          className="text-[9px] bg-white border border-[#EBE8E2] hover:bg-zinc-50 text-zinc-700 px-3 py-1.5 rounded-full font-sans font-bold tracking-wide uppercase shadow-sm cursor-pointer"
+          className="text-[10px] bg-zinc-900 hover:bg-black text-white px-2.5 py-1 rounded-lg font-body font-medium transition cursor-pointer shrink-0 select-none"
         >
-          New Study
+          + New Chat
         </button>
       </div>
 
@@ -147,7 +134,7 @@ function SpacedLearningSideBar({ chats, chatId, setChats, setChatId, setMessages
               <div className="flex items-start gap-3">
                 <span className="text-sm mt-0.5 select-none">🎓</span>
                 <div className="min-w-0 flex-1 text-left">
-                  <p className="text-xs text-zinc-900 font-bold truncate">{activeChat.title}.pdf</p>
+                  <p className="text-xs text-zinc-900 font-bold truncate">{formatDocTitle(activeChat.title)}</p>
                   <p className="text-[9px] text-[#8E8D88] mt-0.5 font-mono">LECTURE SLIDES</p>
                 </div>
               </div>
@@ -157,24 +144,27 @@ function SpacedLearningSideBar({ chats, chatId, setChats, setChatId, setMessages
                 <div className="border-t border-[#EBE8E2] pt-3 mt-1 flex flex-col gap-2 font-sans">
                   <span className="text-[9px] font-bold text-[#8E8D88] uppercase tracking-wider flex items-center gap-1">
                     <span>CHAPTER WORKBOOK</span>
-                    <InfoTooltip text="Parsed chapters indexed by topic. Automatically marked as Mastered or Needs Review based on your recall responses." />
+                    <InfoTooltip text="Parsed chapters indexed by topic. Automatically marked as Mastered or Needs Review based on your recall responses." isLight={true} />
                   </span>
-                  <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
-                    {chapterList.map((ch, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-[9px] bg-zinc-50 border border-zinc-200/50 p-1.5 rounded">
-                        <span className="truncate pr-1 text-zinc-700 font-medium">{ch.name}</span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span 
-                            onClick={() => toggleOverride(ch.name, ch.status)}
-                            className={`px-1.5 py-0.5 rounded text-[8px] font-bold cursor-pointer transition select-none ${
-                              ch.status === "MASTERED" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-                            }`}
-                          >
-                            {ch.status}
-                          </span>
+                  <div className="relative">
+                    <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-200" style={{ scrollbarWidth: 'thin' }}>
+                      {chapterList.map((ch, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-[9px] bg-zinc-50 border border-zinc-200/50 p-1.5 rounded">
+                          <span className="truncate pr-1 text-zinc-700 font-medium">{ch.name}</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span 
+                              className={`px-1.5 py-0.5 rounded text-[8px] font-bold select-none ${
+                                ch.status === "MASTERED" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                              }`}
+                            >
+                              {ch.status}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                    {/* Subtle bottom scroll cue fade */}
+                    <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none opacity-90" />
                   </div>
                 </div>
               )}
@@ -200,12 +190,16 @@ function SpacedLearningSideBar({ chats, chatId, setChats, setChatId, setMessages
                     : 'bg-[#FAF8F5] border-[#EBE8E2] text-zinc-600 hover:bg-[#F3EFE9]'
                 }`}
               >
-                <span className="truncate text-[11px] pr-2">{c.title}</span>
+                <span className="truncate text-[11px] pr-2">{capitalizeFirst(c.title)}</span>
                 <button 
                   onClick={(e) => handleDelete(c.chat_id, e)}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-400 font-sans cursor-pointer px-1 text-xs transition"
+                  className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-red-500 rounded transition cursor-pointer shrink-0"
+                  title="Delete chat"
                 >
-                  ✕
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
                 </button>
               </div>
             ))}

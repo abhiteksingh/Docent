@@ -1,25 +1,11 @@
 import { useState, useEffect } from 'react';
 import API_BASE from '../../api';
+import InfoTooltip from '../../components/InfoTooltip';
 
-function InfoTooltip({ text }) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <span className="relative group inline-block ml-1 select-none font-sans font-normal normal-case">
-      <span 
-        onMouseEnter={() => setVisible(true)}
-        onMouseLeave={() => setVisible(false)}
-        className="text-[8px] bg-[#2D251D] hover:bg-[#FFB04C] text-[#9A958F] hover:text-black w-3 h-3 inline-flex items-center justify-center rounded-full cursor-help font-bold transition-colors"
-      >
-        i
-      </span>
-      {visible && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-44 bg-[#120F0D] border border-[#2D251D] text-zinc-300 text-[8px] font-sans rounded-md p-2 shadow-xl z-50 leading-normal normal-case pointer-events-none text-left">
-          {text}
-        </span>
-      )}
-    </span>
-  );
-}
+const capitalizeTitle = (str = "") => {
+  if (!str) return "Resume";
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};
 
 function InterviewSimulatorSideBar({ chats, chatId, setChats, setChatId, setMessages, onNavigateHome, onDrop }) {
   useEffect(() => {
@@ -100,15 +86,17 @@ function InterviewSimulatorSideBar({ chats, chatId, setChats, setChatId, setMess
 
   return (
     <div className="h-screen w-[280px] bg-[#1C1713] border-r border-[#2D251D] p-6 flex flex-col justify-between shrink-0 z-20 font-sans text-xs text-[#EBE6DF] select-none">
-      <div className="mb-6 flex items-center justify-between border-b border-[#2D251D] pb-4">
-        <div className="flex items-center gap-1.5 cursor-pointer font-bold text-[#FFB04C]" onClick={onNavigateHome}>
-          <span>SIMULATOR BOARD</span>
+      <div className="mb-6 flex items-center justify-between border-b border-[#2D251D] pb-4 select-none gap-2">
+        <div className="min-w-0 flex-1 select-none">
+          <span className="font-extrabold text-sm tracking-tight text-[#EBE6DF] font-body select-none truncate block">
+            Job Simulation
+          </span>
         </div>
         <button 
           onClick={handleNewChat} 
-          className="text-[9px] bg-[#FFB04C] hover:bg-[#FFC06C] text-black px-3 py-1.5 rounded-full font-bold cursor-pointer"
+          className="text-[10px] bg-[#FFB04C]/20 border border-[#FFB04C]/40 hover:bg-[#FFB04C]/30 text-[#FFB04C] px-2.5 py-1 rounded-lg font-body font-medium transition cursor-pointer shrink-0 select-none"
         >
-          NEW ROLE
+          + New Role
         </button>
       </div>
 
@@ -121,7 +109,7 @@ function InterviewSimulatorSideBar({ chats, chatId, setChats, setChatId, setMess
             <div className="flex flex-col gap-2.5">
               <div className="bg-[#120F0D] border border-[#2D251D] p-3.5 rounded-xl flex items-center gap-2">
                 <span>📄</span>
-                <span className="truncate flex-1 text-white text-[11px] font-mono">{activeChat.title}.pdf</span>
+                <span className="truncate flex-1 text-white text-[11px] font-mono" title={capitalizeTitle(activeChat.title)}>{capitalizeTitle(activeChat.title)}.pdf</span>
                 {seniorityTier && (
                   <span className="text-[8px] bg-[#FFB04C]/20 border border-[#FFB04C]/30 text-[#FFB04C] px-1.5 py-0.5 rounded font-bold uppercase">{seniorityTier}</span>
                 )}
@@ -191,12 +179,16 @@ function InterviewSimulatorSideBar({ chats, chatId, setChats, setChatId, setMess
                     : 'bg-[#1C1713] border-[#2D251D] text-[#9A958F] hover:bg-[#251E1A]'
                 }`}
               >
-                <span className="truncate text-[10px] pr-2 font-mono">{c.title}</span>
+                <span className="truncate text-[10px] pr-2 font-mono" title={capitalizeTitle(c.title)}>{capitalizeTitle(c.title)}</span>
                 <button 
                   onClick={(e) => handleDelete(c.chat_id, e)}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-400 font-sans cursor-pointer px-1 text-xs transition"
+                  className="opacity-0 group-hover:opacity-100 p-1 text-[#9A958F] hover:text-red-400 rounded transition cursor-pointer shrink-0"
+                  title="Delete role"
                 >
-                  ✕
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
                 </button>
               </div>
             ))}

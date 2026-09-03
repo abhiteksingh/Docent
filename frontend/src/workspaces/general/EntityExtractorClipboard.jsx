@@ -1,7 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import InfoTooltip from '../../components/InfoTooltip';
 
-function EntityExtractorClipboard({ chatId, activeChat, clipboardItems, setClipboardItems }) {
-  const [activeTab, setActiveTab] = useState("clipboard"); // "clipboard" | "entities"
+function EntityExtractorClipboard({
+  chatId,
+  activeChat,
+  clipboardItems,
+  setClipboardItems,
+  onUpdateClipboard = null,
+  onSelectCitation = null,
+  defaultTab = "clipboard",
+  onClose
+}) {
+  const [activeTab, setActiveTab] = useState(defaultTab);
+
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab]);
 
   const isProcessing = activeChat?.status === "processing";
 
@@ -21,101 +37,150 @@ function EntityExtractorClipboard({ chatId, activeChat, clipboardItems, setClipb
     }
   }
 
+  const [copied, setCopied] = useState(false);
+
   const handleCopyClipboardReport = () => {
     if (clipboardItems.length === 0) return;
     
-    // Format a beautiful Markdown compilation report
-    const header = `### 📋 General Synthesis Clipboard Report\nCompiled reference segments from uploaded document(s):\n\n---\n\n`;
-    const body = clipboardItems.map((item, idx) => (
-      `**[Snippet #${idx + 1}]** (Source: ${item.filename ? `${item.filename}, ` : ""}Page ${item.page})\n> "${item.text}"`
-    )).join("\n\n---\n\n");
+    const header = `### 📋 General Synthesis Research Report\nCompiled AI responses and verified source citations from document analysis:\n\n---\n\n`;
+    const body = clipboardItems.map((item, idx) => {
+      if (item.type === "response" || item.answer) {
+        const sourcesText = item.citations && item.citations.length > 0
+          ? item.citations.map(c => `Page ${c.page}${c.filename ? ` (${c.filename})` : ""}`).join(", ")
+          : "None cited";
+        return `#### ❓ [Item #${idx + 1}] Query:\n${item.question || "General Query"}\n\n#### 💡 Response:\n${item.answer}\n\n**Sources:** ${sourcesText}`;
+      } else {
+        return `**[Snippet #${idx + 1}]** (Source: Page ${item.page})\n> "${item.text}"`;
+      }
+    }).join("\n\n---\n\n");
     
     navigator.clipboard.writeText(header + body);
-    alert("Clipboard compilation report copied to system clipboard!");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleRemoveSnippet = (idx) => {
-    setClipboardItems(prev => prev.filter((_, i) => i !== idx));
+    const updated = clipboardItems.filter((_, i) => i !== idx);
+    setClipboardItems(updated);
+    if (onUpdateClipboard) {
+      onUpdateClipboard(updated);
+    }
   };
 
   return (
-    <div className="w-[300px] bg-[#161616] border-l border-[#2A2A2A] h-full flex flex-col overflow-hidden shrink-0 select-none text-[10px] font-mono">
-      {/* Header Tabs */}
-      <div className="flex border-b border-[#2A2A2A] bg-[#0F0F0F] shrink-0">
-        <button
-          onClick={() => setActiveTab("clipboard")}
-          className={`flex-1 py-3 text-center font-bold tracking-wider uppercase border-b-2 transition ${
-            activeTab === "clipboard" ? "border-[#4C8DFF] text-[#4C8DFF]" : "border-transparent text-[#9A9A9A] hover:text-white"
-          }`}
-        >
-          📋 Clipboard ({clipboardItems.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("entities")}
-          className={`flex-1 py-3 text-center font-bold tracking-wider uppercase border-b-2 transition ${
-            activeTab === "entities" ? "border-[#4C8DFF] text-[#4C8DFF]" : "border-transparent text-[#9A9A9A] hover:text-white"
-          }`}
-        >
-          🔍 Key Terms
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 text-left" style={{ scrollbarWidth: 'thin' }}>
-        {activeTab === "clipboard" ? (
-          <div className="space-y-3.5 h-full flex flex-col">
-            <div className="flex justify-between items-center shrink-0">
-              <span className="text-[#9A9A9A] font-bold uppercase tracking-wider text-[9px]">Pinned Snippets</span>
+    <div className="w-[312px] flex-grow flex flex-col gap-4 overflow-visible text-xs select-none">
+      {activeTab === "clipboard" && (
+        <div className="flex-grow flex flex-col gap-4 overflow-y-auto pr-1 animate-fade-in" style={{ scrollbarWidth: 'thin' }}>
+          <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3 shrink-0">
+            <h4 className="text-[10px] font-bold text-[#8E8D88] tracking-widest uppercase flex items-center gap-1">
+              <span>SYNTHESIS CLIPBOARD</span>
+              <InfoTooltip text="Store and compile reference snippets from chat citations and documents." />
+            </h4>
+            <div className="flex items-center gap-2">
               {clipboardItems.length > 0 && (
                 <button
+                  type="button"
                   onClick={handleCopyClipboardReport}
-                  className="bg-[#4C8DFF] hover:bg-[#6FA2FF] text-white text-[8px] font-bold px-2 py-1 rounded transition cursor-pointer uppercase"
+                  className="text-[9px] text-[#4C8DFF] hover:underline font-bold cursor-pointer font-sans"
                 >
-                  Copy Report
+                  {copied ? "✓ Copied" : "📋 Copy Notes"}
                 </button>
               )}
+              {onClose && (
+                <button onClick={onClose} className="text-zinc-500 hover:text-white cursor-pointer text-xs">✕</button>
+              )}
             </div>
+          </div>
 
-            {clipboardItems.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center py-12 text-[#9A9A9A] leading-relaxed">
-                <span>No pinned snippets yet.</span>
-                <span className="text-[9px] mt-1">Click "Pin to Clipboard" on citations or chat reference excerpts.</span>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {clipboardItems.map((item, idx) => (
-                  <div key={idx} className="bg-[#0A0A0A] border border-[#2A2A2A] p-3 rounded-xl flex flex-col gap-2 relative group hover:border-[#4C8DFF]/30 transition">
-                    <div className="flex justify-between items-center text-[8px] text-[#9A9A9A] border-b border-[#2A2A2A] pb-1">
-                      <span className="truncate max-w-[70%] font-semibold">#{idx+1} {item.filename?.split('/').pop().split('\\').pop()}</span>
-                      <span className="text-[#4C8DFF] font-bold">p.{item.page}</span>
+          {clipboardItems.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center py-16 text-zinc-500 leading-relaxed font-sans text-xs">
+              <span className="text-2xl mb-2">📌</span>
+              <span className="font-semibold text-zinc-400">No pinned responses yet</span>
+              <span className="text-[10px] mt-1 text-zinc-600 max-w-[200px]">
+                Click the bookmark icon on any AI response to collect Q&A insights with sources here.
+              </span>
+            </div>
+          ) : (
+            <div className="space-y-3 font-sans text-[11px]">
+              {clipboardItems.map((item, idx) => (
+                <div
+                  key={item.id || idx}
+                  className="bg-[#0D0D0D] border border-[#2A2A2A] p-3.5 rounded-xl flex flex-col gap-2.5 relative group hover:border-[#4C8DFF]/40 transition text-left shadow-2xs"
+                >
+                  {/* Card Header with Question Context */}
+                  <div className="flex items-start justify-between gap-2 border-b border-[#1E1E1E] pb-2">
+                    <div className="flex items-start gap-1.5 flex-1 min-w-0 pr-3">
+                      <span className="text-[9px] font-bold bg-[#4C8DFF]/15 text-[#4C8DFF] border border-[#4C8DFF]/25 px-1.5 py-0.5 rounded shrink-0">
+                        Q
+                      </span>
+                      <span className="text-[10px] font-medium text-zinc-300 line-clamp-2 leading-snug">
+                        {item.question || "General Query"}
+                      </span>
                     </div>
-                    <p className="text-zinc-300 italic leading-relaxed">"{item.text}"</p>
                     <button
+                      type="button"
                       onClick={() => handleRemoveSnippet(idx)}
-                      className="absolute top-2 right-2 text-[#9A9A9A] hover:text-red-400 opacity-0 group-hover:opacity-100 transition cursor-pointer font-sans"
+                      className="text-zinc-600 hover:text-red-400 transition cursor-pointer font-sans text-xs shrink-0 p-0.5"
+                      title="Remove from clipboard"
                     >
                       ✕
                     </button>
                   </div>
-                ))}
-              </div>
+
+                  {/* AI Answer Content */}
+                  <div className="text-zinc-200 text-[11px] leading-relaxed max-h-36 overflow-y-auto pr-2 select-text custom-scrollbar">
+                    <p className="whitespace-pre-wrap">{item.answer || item.text}</p>
+                  </div>
+
+                  {/* Source Citations Row */}
+                  {item.citations && item.citations.length > 0 && (
+                    <div className="pt-2 border-t border-[#1E1E1E] flex flex-wrap items-center gap-1.5">
+                      <span className="text-[9px] font-mono text-zinc-500">Sources:</span>
+                      {item.citations.map((cit, cIdx) => (
+                        <button
+                          key={cIdx}
+                          type="button"
+                          onClick={() => onSelectCitation && onSelectCitation(cit)}
+                          className="font-mono text-[9px] font-bold bg-[#4C8DFF]/10 hover:bg-[#4C8DFF]/20 border border-[#4C8DFF]/25 text-[#4C8DFF] px-1.5 py-0.5 rounded transition cursor-pointer"
+                          title={`Inspect Page ${cit.page}`}
+                        >
+                          Page {cit.page}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "entities" && (
+        <div className="flex-grow flex flex-col gap-4 overflow-y-auto pr-1 animate-fade-in" style={{ scrollbarWidth: 'thin' }}>
+          <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3 shrink-0">
+            <h4 className="text-[10px] font-bold text-[#8E8D88] tracking-widest uppercase flex items-center gap-1">
+              <span>DOCUMENT ENTITIES</span>
+              <InfoTooltip text="Key definitions, dates, and named organizations extracted from the document." />
+            </h4>
+            {onClose && (
+              <button onClick={onClose} className="text-zinc-500 hover:text-white cursor-pointer text-xs">✕</button>
             )}
           </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="text-[#9A9A9A] font-bold uppercase tracking-wider text-[9px] mb-1">Document Entities</div>
-            
+
+          <div className="space-y-4 font-mono text-[10px] text-left">
             {isProcessing ? (
-              <div className="text-center py-12 text-[#9A9A9A] animate-pulse">Extracting terms in background...</div>
+              <div className="text-center py-16 text-zinc-500 animate-pulse font-sans">Extracting key entities in background...</div>
             ) : (entities.dates.length === 0 && entities.names.length === 0 && entities.definitions.length === 0) ? (
-              <div className="text-[#9A9A9A] py-12 text-center">No key entities found.</div>
+              <div className="text-center py-16 text-zinc-500 font-sans">No key entities discovered yet.</div>
             ) : (
               <>
                 {entities.definitions.length > 0 && (
                   <div className="space-y-2">
-                    <div className="text-[#3ECF8E] text-[8px] font-bold uppercase tracking-widest">Definitions & Terms</div>
+                    <div className="text-[#3ECF8E] text-[9px] font-bold uppercase tracking-widest">Definitions & Terms</div>
                     <div className="space-y-1.5">
                       {entities.definitions.map((def, i) => (
-                        <div key={i} className="bg-[#0A0A0A] border border-[#2A2A2A] p-2.5 rounded-lg text-zinc-300 leading-normal">
+                        <div key={i} className="bg-[#0D0D0D] border border-[#2A2A2A] p-2.5 rounded-xl text-zinc-300 leading-relaxed font-sans text-[11px]">
                           {def}
                         </div>
                       ))}
@@ -124,12 +189,13 @@ function EntityExtractorClipboard({ chatId, activeChat, clipboardItems, setClipb
                 )}
 
                 {entities.dates.length > 0 && (
-                  <div className="space-y-2 pt-2">
-                    <div className="text-[#FFB04C] text-[8px] font-bold uppercase tracking-widest">Key Dates</div>
+                  <div className="space-y-2 pt-2 border-t border-[#222]">
+                    <div className="text-[#FFB04C] text-[9px] font-bold uppercase tracking-widest">Key Dates</div>
                     <div className="space-y-1.5">
                       {entities.dates.map((date, i) => (
-                        <div key={i} className="bg-[#0A0A0A] border border-[#2A2A2A] p-2.5 rounded-lg text-zinc-300 leading-normal">
-                          📅 {date}
+                        <div key={i} className="bg-[#0D0D0D] border border-[#2A2A2A] p-2.5 rounded-xl text-zinc-300 leading-normal flex items-center gap-2">
+                          <span>📅</span>
+                          <span className="font-semibold text-white">{date}</span>
                         </div>
                       ))}
                     </div>
@@ -137,12 +203,13 @@ function EntityExtractorClipboard({ chatId, activeChat, clipboardItems, setClipb
                 )}
 
                 {entities.names.length > 0 && (
-                  <div className="space-y-2 pt-2">
-                    <div className="text-[#4C8DFF] text-[8px] font-bold uppercase tracking-widest">Organizations & Names</div>
+                  <div className="space-y-2 pt-2 border-t border-[#222]">
+                    <div className="text-[#4C8DFF] text-[9px] font-bold uppercase tracking-widest">Organizations & Names</div>
                     <div className="space-y-1.5">
                       {entities.names.map((name, i) => (
-                        <div key={i} className="bg-[#0A0A0A] border border-[#2A2A2A] p-2.5 rounded-lg text-zinc-300 leading-normal">
-                          🏢 {name}
+                        <div key={i} className="bg-[#0D0D0D] border border-[#2A2A2A] p-2.5 rounded-xl text-zinc-300 leading-normal flex items-center gap-2">
+                          <span>🏢</span>
+                          <span className="font-semibold text-white">{name}</span>
                         </div>
                       ))}
                     </div>
@@ -151,8 +218,8 @@ function EntityExtractorClipboard({ chatId, activeChat, clipboardItems, setClipb
               </>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -149,11 +149,7 @@ function ConceptGraph3D({ chatId, chats, messages, workspaceType, onSelectNode, 
           // Client-side strict canonical deduplication
           const uniqueNodes = [];
           const seenTopics = new Set();
-          const normStr = (s) => (s || "").toLowerCase()
-            .replace(/[\u2010-\u2015\u2212]/g, '-')
-            .replace(/\b(denavit[\s\-_]*hartenberg|d[\s\-_.]*h)\b/g, 'dh')
-            .replace(/\b(rep|repre|repr|representations)\b/g, 'representation')
-            .replace(/[^a-z0-9]/g, '');
+          const normStr = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]/g, '');
 
           data.nodes.forEach(node => {
             const topic = normStr(node.label.split(': ').pop());
