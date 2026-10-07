@@ -10,3 +10,6 @@ def append_item(item, target_list=[]):
 
 def maths(a,b):
     return a+b
+
+def writing(words):
+    return "Testing"
