@@ -13,3 +13,6 @@ def maths(a,b):
 
 def writing(words):
     return "Testing"
+
+def multiply(a, b):
+    return a * b
